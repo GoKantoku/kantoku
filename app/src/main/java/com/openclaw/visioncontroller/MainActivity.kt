@@ -73,6 +73,10 @@ class MainActivity : AppCompatActivity() {
     // Action queue for multi-step plans
     private val pendingActions = mutableListOf<String>()
     
+    // Track if we just performed a click (for longer wait)
+    private var lastClickTimeMs = 0L
+    private val postClickWaitMs = 10_000L  // Wait 10 seconds after clicks
+    
     companion object {
         private const val TAG = "Kantoku"  // Easy to grep
         private const val REQUEST_PERMISSIONS = 1001
@@ -443,9 +447,17 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun calculateNextInterval(): Long {
-        // If we have pending actions in the queue, execute immediately
+        // If we just clicked, wait 10 seconds for slow computers to respond
+        val timeSinceClick = System.currentTimeMillis() - lastClickTimeMs
+        if (lastClickTimeMs > 0 && timeSinceClick < postClickWaitMs) {
+            val remainingWait = postClickWaitMs - timeSinceClick
+            Log.d(TAG, "Post-click wait: ${remainingWait}ms remaining")
+            return remainingWait
+        }
+        
+        // If we have pending actions in the queue, execute quickly
         if (pendingActions.isNotEmpty()) {
-            return 500L  // Half second between queued actions
+            return 1_000L  // 1 second between queued actions
         }
         
         // If we just did a meaningful action, brief pause to see results
@@ -459,7 +471,7 @@ class MainActivity : AppCompatActivity() {
             return minIntervalMs
         }
         
-        // Default interval - quick
+        // Default interval
         return 3_000L
     }
     
@@ -716,19 +728,24 @@ class MainActivity : AppCompatActivity() {
                     val targetX = coords[0].trim().toIntOrNull() ?: return
                     val targetY = coords[1].trim().toIntOrNull() ?: return
                     Log.d(TAG, "CLICK at ($targetX, $targetY), current mouse at ($mouseX, $mouseY)")
+                    appendToLog("🖱️ Click ($targetX, $targetY)")
                     
                     // Calculate relative movement
                     val deltaX = targetX - mouseX
                     val deltaY = targetY - mouseY
                     
-                    // Move and click
+                    // Move to position with settle time
                     moveMouse(deltaX, deltaY)
-                    Thread.sleep(100)
+                    Thread.sleep(150)  // Let cursor settle
+                    
+                    // Robust click
                     mouseClick()
                     
                     // Update estimated position
                     mouseX = targetX
                     mouseY = targetY
+                    
+                    appendToLog("⏳ Waiting 10s for response...")
                 }
             }
             upper.startsWith("MOVE:") -> {
@@ -745,17 +762,23 @@ class MainActivity : AppCompatActivity() {
             }
             upper == "LEFTCLICK" -> {
                 Log.d(TAG, "Left click at current position")
+                appendToLog("🖱️ Left click")
                 mouseClick(1)
+                appendToLog("⏳ Waiting 10s for response...")
             }
             upper == "RIGHTCLICK" -> {
                 Log.d(TAG, "Right click at current position")
+                appendToLog("🖱️ Right click")
                 mouseClick(2)
+                appendToLog("⏳ Waiting 10s for response...")
             }
             upper == "DOUBLECLICK" -> {
                 Log.d(TAG, "Double click at current position")
+                appendToLog("🖱️ Double click")
                 mouseClick(1)
-                Thread.sleep(100)
+                Thread.sleep(80)
                 mouseClick(1)
+                appendToLog("⏳ Waiting 10s for response...")
             }
         }
     }
@@ -923,19 +946,48 @@ class MainActivity : AppCompatActivity() {
         }
     }
     
-    // Click at current position
+    // Click at current position - robust version with settle and longer hold
     private fun mouseClick(button: Int = 1) {
+        // Settle - send zero movement to ensure cursor is stable
+        sendMouseReport(0, 0, 0)
+        Thread.sleep(50)
+        
         // Press button
         sendMouseReport(button, 0, 0)
-        Thread.sleep(50)
+        Thread.sleep(100)  // Longer hold for reliability
+        
         // Release button
         sendMouseReport(0, 0, 0)
+        Thread.sleep(50)
+        
+        // Record click time for post-click wait
+        lastClickTimeMs = System.currentTimeMillis()
+        Log.d(TAG, "Click completed, will wait ${postClickWaitMs}ms before next action")
+    }
+    
+    // Click with retry and jitter if needed
+    private fun mouseClickWithRetry(button: Int = 1, retries: Int = 2) {
+        for (attempt in 0..retries) {
+            if (attempt > 0) {
+                // Jitter: small random offset on retry
+                val jitterX = (-5..5).random()
+                val jitterY = (-5..5).random()
+                Log.d(TAG, "Click retry $attempt with jitter ($jitterX, $jitterY)")
+                appendToLog("🔄 Click retry $attempt")
+                moveMouse(jitterX, jitterY)
+                Thread.sleep(100)
+            }
+            mouseClick(button)
+            
+            // Only retry once for now (can make smarter with verification later)
+            if (attempt == 0) break
+        }
     }
     
     // Move and click (relative movement)
     private fun moveAndClick(deltaX: Int, deltaY: Int) {
         moveMouse(deltaX, deltaY)
-        Thread.sleep(50)
+        Thread.sleep(100)  // Longer settle time
         mouseClick()
     }
     
