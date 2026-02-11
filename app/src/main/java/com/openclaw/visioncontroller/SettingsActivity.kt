@@ -11,6 +11,7 @@ import android.widget.ImageButton
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
@@ -38,6 +39,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var tvError: TextView
     private lateinit var btnGetToken: TextView
     private lateinit var btnGetApiKey: TextView
+    private lateinit var btnReset: TextView
 
     private var selectedIdleMode = SetupActivity.IDLE_RANDOM
 
@@ -54,6 +56,7 @@ class SettingsActivity : AppCompatActivity() {
         tvError = findViewById(R.id.tvError)
         btnGetToken = findViewById(R.id.btnGetToken)
         btnGetApiKey = findViewById(R.id.btnGetApiKey)
+        btnReset = findViewById(R.id.btnReset)
 
         setupUI()
         displayCurrentKey()
@@ -76,6 +79,35 @@ class SettingsActivity : AppCompatActivity() {
         btnGetApiKey.setOnClickListener {
             openUrl(URL_GET_API_KEY)
         }
+
+        btnReset.setOnClickListener {
+            showResetConfirmation()
+        }
+    }
+
+    private fun showResetConfirmation() {
+        AlertDialog.Builder(this)
+            .setTitle("Reset All Settings")
+            .setMessage("This will clear your API key/token and all preferences. You'll need to set up Kantoku again.\n\nAre you sure?")
+            .setPositiveButton("Reset") { _, _ ->
+                resetAllSettings()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun resetAllSettings() {
+        // Clear all preferences
+        val prefs = getSharedPreferences(SetupActivity.PREFS_NAME, MODE_PRIVATE)
+        prefs.edit().clear().apply()
+        
+        Toast.makeText(this, "All settings reset", Toast.LENGTH_SHORT).show()
+        
+        // Go back to onboarding
+        val intent = Intent(this, OnboardingActivity::class.java)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        startActivity(intent)
+        finish()
     }
 
     private fun openUrl(url: String) {

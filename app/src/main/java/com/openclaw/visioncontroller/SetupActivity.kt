@@ -2,10 +2,12 @@ package com.openclaw.visioncontroller
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.textfield.TextInputEditText
 
@@ -22,6 +24,10 @@ class SetupActivity : AppCompatActivity() {
         const val IDLE_GOOGLE_MAPS = 1
         const val IDLE_NPR = 2
         const val IDLE_RANDOM = 3
+        
+        // URLs for getting credentials
+        const val URL_GET_TOKEN = "https://docs.anthropic.com/en/docs/claude-code/getting-started"
+        const val URL_GET_API_KEY = "https://console.anthropic.com/settings/keys"
         
         fun isSetupComplete(context: Context): Boolean {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -57,6 +63,8 @@ class SetupActivity : AppCompatActivity() {
     private lateinit var etApiKey: TextInputEditText
     private lateinit var btnContinue: Button
     private lateinit var tvError: TextView
+    private lateinit var btnGetToken: TextView
+    private lateinit var btnGetApiKey: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -65,27 +73,47 @@ class SetupActivity : AppCompatActivity() {
         etApiKey = findViewById(R.id.etApiKey)
         btnContinue = findViewById(R.id.btnContinue)
         tvError = findViewById(R.id.tvError)
+        btnGetToken = findViewById(R.id.btnGetToken)
+        btnGetApiKey = findViewById(R.id.btnGetApiKey)
         
         btnContinue.setOnClickListener {
             validateAndContinue()
         }
+        
+        btnGetToken.setOnClickListener {
+            openUrl(URL_GET_TOKEN)
+        }
+        
+        btnGetApiKey.setOnClickListener {
+            openUrl(URL_GET_API_KEY)
+        }
+    }
+    
+    private fun openUrl(url: String) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(this, "Could not open browser", Toast.LENGTH_SHORT).show()
+        }
     }
     
     private fun validateAndContinue() {
-        val apiKey = etApiKey.text.toString().trim()
+        val credential = etApiKey.text.toString().trim()
         
-        if (apiKey.isEmpty()) {
-            showError("Please enter your API key")
+        if (credential.isEmpty()) {
+            showError("Please enter your API key or setup token")
             return
         }
         
-        if (!apiKey.startsWith("sk-ant-")) {
-            showError("Invalid API key format. Should start with sk-ant-")
+        // Basic validation - must be reasonably long
+        if (credential.length < 20) {
+            showError("Credential looks too short. Please paste the full key or token.")
             return
         }
         
         // Save and continue
-        saveApiKey(this, apiKey)
+        saveApiKey(this, credential)
         startMainActivity()
     }
     

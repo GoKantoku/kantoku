@@ -223,6 +223,7 @@
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
                 app:cardCornerRadius="4dp"
                 app:cardElevation="1dp"
                 app:cardBackgroundColor="@color/gofun_dark">
@@ -266,6 +267,18 @@
 
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
+
+            <!-- Reset Button -->
+            <TextView
+                android:id="@+id/btnReset"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Reset All Settings"
+                android:textSize="14sp"
+                android:textColor="@color/status_error"
+                android:gravity="center"
+                android:padding="16dp"
+                android:background="?attr/selectableItemBackground" />
 
         </LinearLayout>
     </ScrollView>

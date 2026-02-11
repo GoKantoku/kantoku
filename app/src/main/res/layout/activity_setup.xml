@@ -55,21 +55,21 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="API Configuration"
+                android:text="Anthropic Credentials"
                 style="@style/Kantoku.Heading.Small"
                 android:layout_marginBottom="8dp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Enter your Anthropic API key"
+                android:text="Enter your API key or setup token"
                 style="@style/Kantoku.Body.Secondary"
                 android:layout_marginBottom="16dp" />
 
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="API Key"
+                android:hint="API Key or Setup Token"
                 app:endIconMode="password_toggle"
                 app:boxStrokeColor="@color/indigo"
                 app:hintTextColor="@color/hai"
@@ -89,6 +89,78 @@
                     android:textColor="@color/sumi" />
 
             </com.google.android.material.textfield.TextInputLayout>
+
+            <!-- Helper buttons -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="16dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center">
+
+                    <TextView
+                        android:id="@+id/btnGetToken"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Get Setup Token"
+                        android:textSize="13sp"
+                        android:textColor="@color/hai"
+                        android:gravity="center"
+                        android:padding="8dp"
+                        android:background="?attr/selectableItemBackground" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Uses Max/Pro subscription"
+                        android:textSize="10sp"
+                        android:textColor="@color/hai"
+                        android:alpha="0.6" />
+
+                </LinearLayout>
+
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="match_parent"
+                    android:background="@color/hai"
+                    android:alpha="0.3" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center">
+
+                    <TextView
+                        android:id="@+id/btnGetApiKey"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Get API Key"
+                        android:textSize="13sp"
+                        android:textColor="@color/indigo"
+                        android:textStyle="bold"
+                        android:gravity="center"
+                        android:padding="8dp"
+                        android:background="@drawable/btn_outlined_indigo" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Recommended"
+                        android:textSize="10sp"
+                        android:textColor="@color/indigo"
+                        android:layout_marginTop="4dp" />
+
+                </LinearLayout>
+
+            </LinearLayout>
 
         </LinearLayout>
     </androidx.cardview.widget.CardView>

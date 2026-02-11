@@ -11,7 +11,7 @@
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
+        android:layout_weight="1.2"
         android:padding="2dp"
         android:background="@color/indigo_dark">
 
@@ -35,101 +35,108 @@
 
     </FrameLayout>
 
-    <!-- Status Panel -->
-    <LinearLayout
+    <!-- Status Panel (scrollable) -->
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp"
-        android:background="@color/gofun">
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="@color/gofun"
+        android:fillViewport="true">
 
-        <!-- Status -->
-        <TextView
-            android:id="@+id/tvStatus"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Initializing..."
-            android:textSize="16sp"
-            android:fontFamily="serif"
-            android:textColor="@color/sumi"
-            android:padding="12dp"
-            android:background="@color/gofun_dark" />
-
-        <!-- Last Action / Time Remaining -->
-        <TextView
-            android:id="@+id/tvLastAction"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Awaiting connection"
-            android:textSize="13sp"
-            android:fontFamily="sans-serif-light"
-            android:textColor="@color/hai"
-            android:paddingTop="12dp"
-            android:paddingBottom="12dp" />
-
-        <!-- Action Log Header -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Action Log"
-            android:textSize="12sp"
-            android:fontFamily="serif"
-            android:textColor="@color/hai"
-            android:layout_marginTop="12dp"
-            android:layout_marginBottom="4dp" />
-
-        <!-- Scrollable Action Log -->
-        <ScrollView
-            android:id="@+id/svActionLog"
-            android:layout_width="match_parent"
-            android:layout_height="120dp"
-            android:background="@color/sumi"
-            android:padding="8dp"
-            android:fadeScrollbars="false">
-
-            <TextView
-                android:id="@+id/tvActionLog"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Waiting for API..."
-                android:textSize="11sp"
-                android:fontFamily="monospace"
-                android:textColor="@color/gofun"
-                android:lineSpacingMultiplier="1.2" />
-
-        </ScrollView>
-
-        <!-- Control Buttons -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginTop="8dp">
+            android:orientation="vertical"
+            android:padding="16dp">
 
-            <Button
-                android:id="@+id/btnConnect"
-                android:layout_width="0dp"
-                android:layout_height="56dp"
-                android:layout_weight="1"
-                android:text="Connect"
-                android:layout_marginEnd="8dp"
-                android:textColor="@color/indigo"
-                app:strokeColor="@color/indigo"
-                app:cornerRadius="4dp"
-                style="@style/Widget.Material3.Button.OutlinedButton" />
+            <!-- Status -->
+            <TextView
+                android:id="@+id/tvStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Initializing..."
+                android:textSize="16sp"
+                android:fontFamily="serif"
+                android:textColor="@color/sumi"
+                android:padding="12dp"
+                android:background="@color/gofun_dark" />
 
-            <Button
-                android:id="@+id/btnStart"
-                android:layout_width="0dp"
-                android:layout_height="56dp"
-                android:layout_weight="1"
-                android:text="Stop"
-                android:layout_marginStart="8dp"
-                android:backgroundTint="@color/indigo"
-                android:textColor="@color/shironeri"
-                app:cornerRadius="4dp" />
+            <!-- Last Action / Time Remaining -->
+            <TextView
+                android:id="@+id/tvLastAction"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Awaiting connection"
+                android:textSize="13sp"
+                android:fontFamily="sans-serif-light"
+                android:textColor="@color/hai"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp" />
+
+            <!-- Action Log Header -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Action Log"
+                android:textSize="12sp"
+                android:fontFamily="serif"
+                android:textColor="@color/hai"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="4dp" />
+
+            <!-- Action Log (nested scroll) -->
+            <androidx.core.widget.NestedScrollView
+                android:id="@+id/svActionLog"
+                android:layout_width="match_parent"
+                android:layout_height="120dp"
+                android:background="@color/sumi"
+                android:padding="8dp"
+                android:fadeScrollbars="false">
+
+                <TextView
+                    android:id="@+id/tvActionLog"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Waiting for API..."
+                    android:textSize="11sp"
+                    android:fontFamily="monospace"
+                    android:textColor="@color/gofun"
+                    android:lineSpacingMultiplier="1.2" />
+
+            </androidx.core.widget.NestedScrollView>
+
+            <!-- Control Buttons -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="8dp">
+
+                <Button
+                    android:id="@+id/btnConnect"
+                    android:layout_width="0dp"
+                    android:layout_height="56dp"
+                    android:layout_weight="1"
+                    android:text="Connect"
+                    android:layout_marginEnd="8dp"
+                    android:textColor="@color/indigo"
+                    app:strokeColor="@color/indigo"
+                    app:cornerRadius="4dp"
+                    style="@style/Widget.Material3.Button.OutlinedButton" />
+
+                <Button
+                    android:id="@+id/btnStart"
+                    android:layout_width="0dp"
+                    android:layout_height="56dp"
+                    android:layout_weight="1"
+                    android:text="Stop"
+                    android:layout_marginStart="8dp"
+                    android:backgroundTint="@color/indigo"
+                    android:textColor="@color/shironeri"
+                    app:cornerRadius="4dp" />
+            </LinearLayout>
+
         </LinearLayout>
-
-    </LinearLayout>
+    </ScrollView>
 
 </LinearLayout>
