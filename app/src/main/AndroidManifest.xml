@@ -43,6 +43,10 @@
             android:name=".MainActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
+            
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false" />
         
         <!-- Service for Bluetooth HID -->
         <service

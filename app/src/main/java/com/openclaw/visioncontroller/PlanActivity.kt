@@ -52,6 +52,7 @@ class PlanActivity : AppCompatActivity() {
     private lateinit var tvBluetoothStatus: TextView
     private lateinit var btnConnect: Button
     private lateinit var btnStart: Button
+    private lateinit var btnSettings: android.widget.ImageButton
 
     private var bluetoothAdapter: BluetoothAdapter? = null
     private var selectedDeviceAddress: String? = null
@@ -66,6 +67,7 @@ class PlanActivity : AppCompatActivity() {
         tvBluetoothStatus = findViewById(R.id.tvBluetoothStatus)
         btnConnect = findViewById(R.id.btnConnect)
         btnStart = findViewById(R.id.btnStart)
+        btnSettings = findViewById(R.id.btnSettings)
 
         val bluetoothManager = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
         bluetoothAdapter = bluetoothManager.adapter
@@ -87,6 +89,10 @@ class PlanActivity : AppCompatActivity() {
 
         btnStart.setOnClickListener {
             startExecution()
+        }
+
+        btnSettings.setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
         }
     }
     
