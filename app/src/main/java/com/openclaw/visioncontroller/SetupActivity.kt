@@ -15,6 +15,13 @@ class SetupActivity : AppCompatActivity() {
         const val PREFS_NAME = "KantokuPrefs"
         const val KEY_API_KEY = "anthropic_api_key"
         const val KEY_SETUP_COMPLETE = "setup_complete"
+        const val KEY_IDLE_MODE = "idle_mode"
+        
+        // Idle mode options
+        const val IDLE_WIKIPEDIA = 0
+        const val IDLE_GOOGLE_MAPS = 1
+        const val IDLE_NPR = 2
+        const val IDLE_RANDOM = 3
         
         fun isSetupComplete(context: Context): Boolean {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -31,6 +38,18 @@ class SetupActivity : AppCompatActivity() {
             prefs.edit()
                 .putString(KEY_API_KEY, apiKey)
                 .putBoolean(KEY_SETUP_COMPLETE, true)
+                .apply()
+        }
+        
+        fun getIdleMode(context: Context): Int {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            return prefs.getInt(KEY_IDLE_MODE, IDLE_RANDOM)
+        }
+        
+        fun saveIdleMode(context: Context, mode: Int) {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit()
+                .putInt(KEY_IDLE_MODE, mode)
                 .apply()
         }
     }

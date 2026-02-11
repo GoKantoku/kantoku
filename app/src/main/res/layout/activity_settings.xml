@@ -131,6 +131,46 @@
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
+            <!-- Idle Mode Card -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="4dp"
+                app:cardElevation="1dp"
+                app:cardBackgroundColor="@color/gofun_dark">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="After Task is Complete"
+                        style="@style/Kantoku.Heading.Small"
+                        android:layout_marginBottom="8dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="What should Kantoku do to keep the computer busy?"
+                        style="@style/Kantoku.Body.Secondary"
+                        android:layout_marginBottom="12dp" />
+
+                    <Spinner
+                        android:id="@+id/spIdleMode"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:background="@drawable/spinner_background"
+                        android:padding="12dp"
+                        android:popupBackground="@color/gofun" />
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
             <!-- About Card -->
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"

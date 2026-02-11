@@ -83,10 +83,13 @@ class MainActivity : AppCompatActivity() {
     private var idleActionCount = 0
     private val idleIntervalMs = 60_000L           // 60 seconds between simple actions
     private val idleBrowseIntervalMs = 5 * 60_000L // 5 minutes between vision-guided browsing
-    private val idleUrls = listOf(
-        "https://en.wikipedia.org/wiki/Special:Random",
-        "https://www.google.com/maps/@0,0,3z"
-    )
+    private var idleModePreference = SetupActivity.IDLE_RANDOM
+    
+    // Idle mode URL options
+    private val idleUrlWikipedia = "https://en.wikipedia.org/wiki/Special:Random"
+    private val idleUrlGoogleMaps = "https://www.google.com/maps/@0,0,3z"
+    private val idleUrlNpr = "https://www.npr.org"
+    private val allIdleUrls = listOf(idleUrlWikipedia, idleUrlGoogleMaps, idleUrlNpr)
     
     companion object {
         private const val TAG = "Kantoku"  // Easy to grep
@@ -179,8 +182,9 @@ class MainActivity : AppCompatActivity() {
         durationMs = intent.getLongExtra(PlanActivity.EXTRA_DURATION_MS, 5 * 60 * 1000L)
         val deviceAddress = intent.getStringExtra(PlanActivity.EXTRA_DEVICE_ADDRESS)
         
-        // Load API key
+        // Load API key and preferences
         apiKey = SetupActivity.getApiKey(this)
+        idleModePreference = SetupActivity.getIdleMode(this)
         
         val bluetoothManager = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
         bluetoothAdapter = bluetoothManager.adapter
@@ -544,8 +548,13 @@ class MainActivity : AppCompatActivity() {
     }
     
     private suspend fun idleBrowseWithVision() {
-        // Open a random interesting URL
-        val url = idleUrls.random()
+        // Select URL based on preference
+        val url = when (idleModePreference) {
+            SetupActivity.IDLE_WIKIPEDIA -> idleUrlWikipedia
+            SetupActivity.IDLE_GOOGLE_MAPS -> idleUrlGoogleMaps
+            SetupActivity.IDLE_NPR -> idleUrlNpr
+            else -> allIdleUrls.random()  // IDLE_RANDOM
+        }
         appendToLog("🌐 Opening $url")
         
         // Open new tab and navigate
