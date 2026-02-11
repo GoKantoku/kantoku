@@ -88,7 +88,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Your computer will see this phone as a wireless keyboard and mouse. Kantoku uses this to control your computer."
+                        android:text="Pair from your computer to the phone, as that will allow the phone to send mouse and keyboard commands to your computer."
                         style="@style/Kantoku.Body.Secondary"
                         android:lineSpacingMultiplier="1.4" />
 
