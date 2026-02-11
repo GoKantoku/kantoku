@@ -53,6 +53,7 @@ class MainActivity : AppCompatActivity() {
     
     // Task execution state
     private var currentTask = ""
+    private var currentSkill: Skill? = null
     private var durationMs = 5 * 60 * 1000L
     private var startTimeMs = 0L
     private var lastActionTimeMs = 0L
@@ -185,6 +186,10 @@ class MainActivity : AppCompatActivity() {
         // Load API key and preferences
         apiKey = SetupActivity.getApiKey(this)
         idleModePreference = SetupActivity.getIdleMode(this)
+        
+        // Load skill
+        val skillId = intent.getStringExtra(PlanActivity.EXTRA_SKILL_ID) ?: "general"
+        currentSkill = SkillManager.getSkillById(this, skillId)
         
         val bluetoothManager = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
         bluetoothAdapter = bluetoothManager.adapter
@@ -743,11 +748,22 @@ class MainActivity : AppCompatActivity() {
     private fun callVisionAI(base64Image: String, isRecoveryMode: Boolean): String {
         val recentActions = actionHistory.takeLast(5).joinToString("\n")
         
+        // Build skill instructions section if a skill is selected
+        val skillSection = if (currentSkill != null && currentSkill!!.instructions.isNotEmpty()) {
+            """
+            |
+            |SKILL KNOWLEDGE (${currentSkill!!.name}):
+            |${currentSkill!!.instructions}
+            |""".trimMargin()
+        } else {
+            ""
+        }
+        
         val prompt = if (isRecoveryMode) {
             """You are controlling a computer via keyboard and mouse. You seem to be stuck.
             |
             |YOUR TASK: $currentTask
-            |
+            |$skillSection
             |RECENT ACTIONS (may not have worked):
             |$recentActions
             |
@@ -780,7 +796,7 @@ class MainActivity : AppCompatActivity() {
             """You are controlling a computer via keyboard and mouse to complete a task.
             |
             |YOUR TASK: $currentTask
-            |
+            |$skillSection
             |RECENT ACTIONS:
             |${if (recentActions.isEmpty()) "None yet" else recentActions}
             |

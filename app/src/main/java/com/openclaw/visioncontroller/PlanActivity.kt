@@ -27,6 +27,7 @@ class PlanActivity : AppCompatActivity() {
         const val EXTRA_TASK = "task"
         const val EXTRA_DURATION_MS = "duration_ms"
         const val EXTRA_DEVICE_ADDRESS = "device_address"
+        const val EXTRA_SKILL_ID = "skill_id"
         
         private const val REQUEST_PERMISSIONS = 1002
         
@@ -49,6 +50,7 @@ class PlanActivity : AppCompatActivity() {
 
     private lateinit var etTask: TextInputEditText
     private lateinit var spDuration: Spinner
+    private lateinit var spSkill: Spinner
     private lateinit var tvBluetoothStatus: TextView
     private lateinit var btnConnect: Button
     private lateinit var btnStart: Button
@@ -57,6 +59,8 @@ class PlanActivity : AppCompatActivity() {
     private var bluetoothAdapter: BluetoothAdapter? = null
     private var selectedDeviceAddress: String? = null
     private var selectedDurationMs: Long = DURATION_OPTIONS[0].second
+    private var selectedSkillId: String = "general"
+    private var skills: List<Skill> = emptyList()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -64,6 +68,7 @@ class PlanActivity : AppCompatActivity() {
 
         etTask = findViewById(R.id.etTask)
         spDuration = findViewById(R.id.spDuration)
+        spSkill = findViewById(R.id.spSkill)
         tvBluetoothStatus = findViewById(R.id.tvBluetoothStatus)
         btnConnect = findViewById(R.id.btnConnect)
         btnStart = findViewById(R.id.btnStart)
@@ -74,6 +79,7 @@ class PlanActivity : AppCompatActivity() {
 
         setupUI()
         setupDurationSpinner()
+        setupSkillSpinner()
         
         if (!allPermissionsGranted()) {
             ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, REQUEST_PERMISSIONS)
@@ -109,6 +115,24 @@ class PlanActivity : AppCompatActivity() {
             
             override fun onNothingSelected(parent: AdapterView<*>?) {
                 selectedDurationMs = DURATION_OPTIONS[0].second
+            }
+        }
+    }
+    
+    private fun setupSkillSpinner() {
+        skills = SkillManager.getAllSkills(this)
+        val skillNames = skills.map { "${it.icon} ${it.name}" }
+        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, skillNames)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spSkill.adapter = adapter
+        
+        spSkill.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                selectedSkillId = skills[position].id
+            }
+            
+            override fun onNothingSelected(parent: AdapterView<*>?) {
+                selectedSkillId = "general"
             }
         }
     }
@@ -169,6 +193,7 @@ class PlanActivity : AppCompatActivity() {
             putExtra(EXTRA_TASK, task)
             putExtra(EXTRA_DURATION_MS, selectedDurationMs)
             putExtra(EXTRA_DEVICE_ADDRESS, selectedDeviceAddress)
+            putExtra(EXTRA_SKILL_ID, selectedSkillId)
         }
         startActivity(intent)
     }
