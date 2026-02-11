@@ -604,14 +604,20 @@ class MainActivity : AppCompatActivity() {
     private fun callIdleVisionAI(base64Image: String): String {
         val prompt = """You are casually browsing the web to keep a computer active.
             |
-            |Look at the screen and do something interesting but harmless:
+            |⚠️ FIRST: If you see any popups, dismiss them:
+            |- Cookie banners → click "Accept" or "OK" or X
+            |- Newsletter popups → click "No thanks" or X
+            |- Any overlay/modal → close it
+            |
+            |Then do something interesting but harmless:
             |- Scroll around to read content
             |- Click an interesting link
             |- Explore the page naturally
             |
             |Respond with 2-3 simple commands:
             |- KEY:pagedown / KEY:pageup (scroll)
-            |- CLICK:x,y (click something interesting)
+            |- KEY:escape (dismiss dialogs)
+            |- CLICK:x,y (click something interesting or close a popup)
             |- MOVE:dx,dy (move mouse around)
             |- WAIT (pause to "read")
             |
@@ -745,9 +751,16 @@ class MainActivity : AppCompatActivity() {
             |RECENT ACTIONS (may not have worked):
             |$recentActions
             |
-            |Look at the screen and try a DIFFERENT approach. Maybe:
+            |⚠️ FIRST: Check for popups/dialogs blocking the screen:
+            |- Cookie consent banners → click "Accept" or "OK" or close button
+            |- System notifications → dismiss them
+            |- Permission dialogs → click "Allow" or "OK" 
+            |- Update prompts → click "Later" or "Not Now" or close
+            |- Any modal/overlay → close it before continuing
+            |
+            |Then try a DIFFERENT approach. Maybe:
             |- Click somewhere with the mouse
-            |- Use a keyboard shortcut
+            |- Use a keyboard shortcut (KEY:escape often closes dialogs)
             |- Try a different method
             |
             |Respond with a PLAN of 3-5 commands to try, one per line:
@@ -760,10 +773,9 @@ class MainActivity : AppCompatActivity() {
             |- DONE (if task is complete)
             |
             |Example plan:
-            |KEY:cmd+space
-            |WAIT
-            |TYPE:Safari
-            |KEY:enter""".trimMargin()
+            |KEY:escape
+            |CLICK:850,520
+            |WAIT""".trimMargin()
         } else {
             """You are controlling a computer via keyboard and mouse to complete a task.
             |
@@ -772,8 +784,15 @@ class MainActivity : AppCompatActivity() {
             |RECENT ACTIONS:
             |${if (recentActions.isEmpty()) "None yet" else recentActions}
             |
-            |Look at the current screen state and plan the NEXT 3-5 STEPS to make progress.
-            |Think ahead - what sequence of actions will move toward completing the task?
+            |⚠️ FIRST PRIORITY: Check for and dismiss any popups/dialogs:
+            |- Cookie consent banners → click "Accept", "OK", "Got it", or X button
+            |- System notifications/alerts → dismiss or close them
+            |- Permission dialogs → click "Allow" or "OK"
+            |- Software update prompts → click "Later", "Not Now", or close
+            |- Newsletter/signup popups → click X or "No thanks"
+            |- Any modal or overlay blocking the screen → close it first
+            |
+            |After clearing popups, plan the NEXT 3-5 STEPS to make progress on the task.
             |
             |Respond with multiple commands, one per line:
             |- TYPE:text (type text)
@@ -784,14 +803,14 @@ class MainActivity : AppCompatActivity() {
             |- WAIT (if waiting for something to load)
             |- DONE (if task is complete)
             |
-            |Prefer keyboard shortcuts when available. Use mouse for clicking UI elements.
+            |Prefer keyboard shortcuts when available. KEY:escape often closes dialogs.
             |
             |Example plan:
-            |KEY:cmd+space
+            |CLICK:920,45
             |WAIT
+            |KEY:cmd+space
             |TYPE:Notes
-            |KEY:enter
-            |KEY:cmd+n""".trimMargin()
+            |KEY:enter""".trimMargin()
         }
         
         val json = JSONObject().apply {
