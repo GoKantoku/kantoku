@@ -7,8 +7,11 @@ import android.bluetooth.BluetoothManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.view.View
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.Button
-import android.widget.RadioGroup
+import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -31,23 +34,35 @@ class PlanActivity : AppCompatActivity() {
             Manifest.permission.BLUETOOTH_CONNECT,
             Manifest.permission.BLUETOOTH_SCAN
         )
+        
+        // Duration options: display name -> milliseconds
+        private val DURATION_OPTIONS = listOf(
+            "5 minutes" to 5 * 60 * 1000L,
+            "15 minutes" to 15 * 60 * 1000L,
+            "30 minutes" to 30 * 60 * 1000L,
+            "1 hour" to 60 * 60 * 1000L,
+            "2 hours" to 2 * 60 * 60 * 1000L,
+            "4 hours" to 4 * 60 * 60 * 1000L,
+            "8 hours" to 8 * 60 * 60 * 1000L
+        )
     }
 
     private lateinit var etTask: TextInputEditText
-    private lateinit var rgDuration: RadioGroup
+    private lateinit var spDuration: Spinner
     private lateinit var tvBluetoothStatus: TextView
     private lateinit var btnConnect: Button
     private lateinit var btnStart: Button
 
     private var bluetoothAdapter: BluetoothAdapter? = null
     private var selectedDeviceAddress: String? = null
+    private var selectedDurationMs: Long = DURATION_OPTIONS[0].second
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_plan)
 
         etTask = findViewById(R.id.etTask)
-        rgDuration = findViewById(R.id.rgDuration)
+        spDuration = findViewById(R.id.spDuration)
         tvBluetoothStatus = findViewById(R.id.tvBluetoothStatus)
         btnConnect = findViewById(R.id.btnConnect)
         btnStart = findViewById(R.id.btnStart)
@@ -56,6 +71,7 @@ class PlanActivity : AppCompatActivity() {
         bluetoothAdapter = bluetoothManager.adapter
 
         setupUI()
+        setupDurationSpinner()
         
         if (!allPermissionsGranted()) {
             ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, REQUEST_PERMISSIONS)
@@ -71,6 +87,23 @@ class PlanActivity : AppCompatActivity() {
 
         btnStart.setOnClickListener {
             startExecution()
+        }
+    }
+    
+    private fun setupDurationSpinner() {
+        val durationNames = DURATION_OPTIONS.map { it.first }
+        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, durationNames)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spDuration.adapter = adapter
+        
+        spDuration.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                selectedDurationMs = DURATION_OPTIONS[position].second
+            }
+            
+            override fun onNothingSelected(parent: AdapterView<*>?) {
+                selectedDurationMs = DURATION_OPTIONS[0].second
+            }
         }
     }
 
@@ -113,19 +146,6 @@ class PlanActivity : AppCompatActivity() {
         tvBluetoothStatus.text = status
     }
 
-    private fun getSelectedDuration(): Long {
-        return when (rgDuration.checkedRadioButtonId) {
-            R.id.rb5min -> 5 * 60 * 1000L
-            R.id.rb15min -> 15 * 60 * 1000L
-            R.id.rb30min -> 30 * 60 * 1000L
-            R.id.rb1hour -> 60 * 60 * 1000L
-            R.id.rb2hour -> 2 * 60 * 60 * 1000L
-            R.id.rb4hour -> 4 * 60 * 60 * 1000L
-            R.id.rb8hour -> 8 * 60 * 60 * 1000L
-            else -> 5 * 60 * 1000L
-        }
-    }
-
     private fun startExecution() {
         val task = etTask.text.toString().trim()
         
@@ -141,7 +161,7 @@ class PlanActivity : AppCompatActivity() {
 
         val intent = Intent(this, MainActivity::class.java).apply {
             putExtra(EXTRA_TASK, task)
-            putExtra(EXTRA_DURATION_MS, getSelectedDuration())
+            putExtra(EXTRA_DURATION_MS, selectedDurationMs)
             putExtra(EXTRA_DEVICE_ADDRESS, selectedDeviceAddress)
         }
         startActivity(intent)

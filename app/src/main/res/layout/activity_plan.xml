@@ -107,84 +107,13 @@
                 style="@style/Kantoku.Heading.Small"
                 android:layout_marginBottom="12dp" />
 
-            <RadioGroup
-                android:id="@+id/rgDuration"
+            <Spinner
+                android:id="@+id/spDuration"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical">
-
-                <RadioButton
-                    android:id="@+id/rb5min"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="5 minutes"
-                    android:padding="10dp"
-                    android:fontFamily="sans-serif-light"
-                    android:textColor="@color/sumi_light"
-                    android:buttonTint="@color/indigo"
-                    android:checked="true" />
-
-                <RadioButton
-                    android:id="@+id/rb15min"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="15 minutes"
-                    android:padding="10dp"
-                    android:fontFamily="sans-serif-light"
-                    android:textColor="@color/sumi_light"
-                    android:buttonTint="@color/indigo" />
-
-                <RadioButton
-                    android:id="@+id/rb30min"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="30 minutes"
-                    android:padding="10dp"
-                    android:fontFamily="sans-serif-light"
-                    android:textColor="@color/sumi_light"
-                    android:buttonTint="@color/indigo" />
-
-                <RadioButton
-                    android:id="@+id/rb1hour"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="1 hour"
-                    android:padding="10dp"
-                    android:fontFamily="sans-serif-light"
-                    android:textColor="@color/sumi_light"
-                    android:buttonTint="@color/indigo" />
-
-                <RadioButton
-                    android:id="@+id/rb2hour"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="2 hours"
-                    android:padding="10dp"
-                    android:fontFamily="sans-serif-light"
-                    android:textColor="@color/sumi_light"
-                    android:buttonTint="@color/indigo" />
-
-                <RadioButton
-                    android:id="@+id/rb4hour"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="4 hours"
-                    android:padding="10dp"
-                    android:fontFamily="sans-serif-light"
-                    android:textColor="@color/sumi_light"
-                    android:buttonTint="@color/indigo" />
-
-                <RadioButton
-                    android:id="@+id/rb8hour"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="8 hours"
-                    android:padding="10dp"
-                    android:fontFamily="sans-serif-light"
-                    android:textColor="@color/sumi_light"
-                    android:buttonTint="@color/indigo" />
-
-            </RadioGroup>
+                android:layout_height="56dp"
+                android:background="@drawable/spinner_background"
+                android:padding="12dp"
+                android:popupBackground="@color/gofun" />
 
         </LinearLayout>
     </androidx.cardview.widget.CardView>
