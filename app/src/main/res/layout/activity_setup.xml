@@ -6,7 +6,8 @@
     android:orientation="vertical"
     android:gravity="center"
     android:padding="32dp"
-    android:background="@color/gofun">
+    android:background="@color/gofun"
+    android:keepScreenOn="true">
 
     <!-- Vertical Japanese accent - 監督 -->
     <TextView

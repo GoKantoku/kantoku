@@ -5,7 +5,8 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="24dp"
-    android:background="@color/gofun">
+    android:background="@color/gofun"
+    android:keepScreenOn="true">
 
     <!-- Header with vertical accent -->
     <LinearLayout

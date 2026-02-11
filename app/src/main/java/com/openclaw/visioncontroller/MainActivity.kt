@@ -61,11 +61,17 @@ class MainActivity : AppCompatActivity() {
     private val actionHistory = mutableListOf<String>()
     private var isTaskComplete = false
     
-    // Heartbeat configuration
-    private val minIntervalMs = 15_000L      // Min 15 seconds between API calls
-    private val maxIntervalMs = 60_000L      // Max 60 seconds
-    private val stallThresholdMs = 45_000L   // Consider stalled after 45s of no progress
-    private val maxConsecutiveWaits = 3      // After 3 WAITs, try a recovery prompt
+    // Action log for display
+    private val actionLog = StringBuilder()
+    
+    // Heartbeat configuration - tightened for faster execution
+    private val minIntervalMs = 2_000L       // Min 2 seconds between API calls
+    private val maxIntervalMs = 5_000L       // Max 5 seconds
+    private val stallThresholdMs = 15_000L   // Consider stalled after 15s of no progress
+    private val maxConsecutiveWaits = 2      // After 2 WAITs, try a recovery prompt
+    
+    // Action queue for multi-step plans
+    private val pendingActions = mutableListOf<String>()
     
     companion object {
         private const val TAG = "Kantoku"  // Easy to grep
@@ -187,6 +193,25 @@ class MainActivity : AppCompatActivity() {
         }
         
         binding.btnConnect.visibility = android.view.View.GONE
+        
+        // Initialize action log
+        actionLog.clear()
+        appendToLog("Task: $currentTask")
+        appendToLog("Waiting for connection...")
+    }
+    
+    private fun appendToLog(message: String) {
+        val timestamp = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US)
+            .format(java.util.Date())
+        actionLog.append("[$timestamp] $message\n")
+        
+        runOnUiThread {
+            binding.tvActionLog.text = actionLog.toString()
+            // Auto-scroll to bottom
+            binding.svActionLog.post {
+                binding.svActionLog.fullScroll(android.view.View.FOCUS_DOWN)
+            }
+        }
     }
     
     private fun setupBluetoothHid(deviceAddress: String?) {
@@ -267,6 +292,7 @@ class MainActivity : AppCompatActivity() {
                             connectedDevice = device
                             updateStatus("✅ HID Connected to ${device.name}")
                             Log.d(TAG, "HID CONNECTED! Starting vision loop...")
+                            appendToLog("✅ Connected to ${device.name}")
                             if (!isRunning) {
                                 startVisionLoop()
                             }
@@ -360,6 +386,8 @@ class MainActivity : AppCompatActivity() {
         binding.btnStart.text = "Stop"
         updateStatus("Starting: $currentTask")
         Log.d(TAG, "Vision loop starting, HID connected: ${connectedDevice != null}")
+        appendToLog("🚀 Starting vision loop...")
+        appendToLog("Duration: ${durationMs / 60000} minutes")
         
         scope.launch {
             Log.d(TAG, "Vision loop coroutine started")
@@ -387,10 +415,19 @@ class MainActivity : AppCompatActivity() {
                     binding.tvLastAction.text = "Time remaining: ${remainingMin}m ${remainingSec}s"
                 }
                 
-                // Capture and analyze
-                Log.d(TAG, "Calling captureAndAnalyze...")
-                captureAndAnalyze()
-                Log.d(TAG, "captureAndAnalyze completed")
+                // Check if we have queued actions to execute first
+                if (pendingActions.isNotEmpty()) {
+                    val nextAction = pendingActions.removeAt(0)
+                    Log.d(TAG, "Executing queued action: $nextAction")
+                    runOnUiThread {
+                        processAction(nextAction)
+                    }
+                } else {
+                    // Capture and analyze for new plan
+                    Log.d(TAG, "Calling captureAndAnalyze...")
+                    captureAndAnalyze()
+                    Log.d(TAG, "captureAndAnalyze completed")
+                }
                 
                 // Dynamic interval based on activity
                 val interval = calculateNextInterval()
@@ -406,7 +443,12 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun calculateNextInterval(): Long {
-        // If we just did a meaningful action, wait longer to see results
+        // If we have pending actions in the queue, execute immediately
+        if (pendingActions.isNotEmpty()) {
+            return 500L  // Half second between queued actions
+        }
+        
+        // If we just did a meaningful action, brief pause to see results
         if (lastMeaningfulAction.isNotEmpty() && lastMeaningfulAction != "WAIT") {
             return maxIntervalMs
         }
@@ -417,8 +459,8 @@ class MainActivity : AppCompatActivity() {
             return minIntervalMs
         }
         
-        // Default interval
-        return 30_000L
+        // Default interval - quick
+        return 3_000L
     }
     
     private fun stopVisionLoop() {
@@ -452,33 +494,13 @@ class MainActivity : AppCompatActivity() {
                 Log.d(TAG, "Parsed action: $action")
                 
                 withContext(Dispatchers.Main) {
-                    updateStatus("Action: $action")
-                    
-                    // Track action history
-                    actionHistory.add(action)
-                    if (actionHistory.size > 10) {
-                        actionHistory.removeAt(0)
-                    }
-                    
-                    // Handle action
-                    if (action.uppercase() == "DONE") {
-                        Log.d(TAG, "Task marked as DONE")
-                        isTaskComplete = true
-                    } else if (action.uppercase() == "WAIT") {
-                        consecutiveWaits++
-                        Log.d(TAG, "WAIT action, consecutiveWaits=$consecutiveWaits")
-                    } else {
-                        consecutiveWaits = 0
-                        lastActionTimeMs = System.currentTimeMillis()
-                        lastMeaningfulAction = action
-                        Log.d(TAG, "Executing action: $action")
-                        executeAction(action)
-                    }
+                    processAction(action)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Vision analysis failed: ${e.message}", e)
                 withContext(Dispatchers.Main) {
                     updateStatus("Error: ${e.message}")
+                    appendToLog("⚠️ Error: ${e.message}")
                 }
             }
         }
@@ -500,7 +522,7 @@ class MainActivity : AppCompatActivity() {
             |- Use a keyboard shortcut
             |- Try a different method
             |
-            |Respond with ONLY one command:
+            |Respond with a PLAN of 3-5 commands to try, one per line:
             |- TYPE:text (type text)
             |- KEY:keyname (press key: enter, tab, escape, space, cmd+space, cmd+n, etc.)
             |- CLICK:x,y (click at screen coordinates, e.g., CLICK:100,200)
@@ -509,7 +531,11 @@ class MainActivity : AppCompatActivity() {
             |- WAIT (if waiting for something)
             |- DONE (if task is complete)
             |
-            |Example: KEY:cmd+space or CLICK:720,800 or TYPE:Numbers""".trimMargin()
+            |Example plan:
+            |KEY:cmd+space
+            |WAIT
+            |TYPE:Safari
+            |KEY:enter""".trimMargin()
         } else {
             """You are controlling a computer via keyboard and mouse to complete a task.
             |
@@ -518,9 +544,10 @@ class MainActivity : AppCompatActivity() {
             |RECENT ACTIONS:
             |${if (recentActions.isEmpty()) "None yet" else recentActions}
             |
-            |Look at the current screen state and decide the next action.
+            |Look at the current screen state and plan the NEXT 3-5 STEPS to make progress.
+            |Think ahead - what sequence of actions will move toward completing the task?
             |
-            |Respond with ONLY one command:
+            |Respond with multiple commands, one per line:
             |- TYPE:text (type text)
             |- KEY:keyname (press key: enter, tab, escape, space, cmd+space, cmd+n, etc.)
             |- CLICK:x,y (click at screen coordinates, e.g., CLICK:100,200)
@@ -531,12 +558,17 @@ class MainActivity : AppCompatActivity() {
             |
             |Prefer keyboard shortcuts when available. Use mouse for clicking UI elements.
             |
-            |Example: KEY:cmd+space or CLICK:720,800 or TYPE:Numbers""".trimMargin()
+            |Example plan:
+            |KEY:cmd+space
+            |WAIT
+            |TYPE:Notes
+            |KEY:enter
+            |KEY:cmd+n""".trimMargin()
         }
         
         val json = JSONObject().apply {
             put("model", "claude-sonnet-4-20250514")
-            put("max_tokens", 100)
+            put("max_tokens", 300)
             put("messages", JSONArray().apply {
                 put(JSONObject().apply {
                     put("role", "user")
@@ -588,22 +620,76 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun parseAction(response: String): String {
+        // Parse first action for backward compatibility, but queue the rest
+        val actions = parseAllActions(response)
+        if (actions.isEmpty()) return "WAIT"
+        
+        // Queue all but the first action
+        if (actions.size > 1) {
+            pendingActions.clear()
+            pendingActions.addAll(actions.drop(1))
+            appendToLog("📋 Planned ${actions.size} steps")
+        }
+        
+        return actions.first()
+    }
+    
+    private fun parseAllActions(response: String): List<String> {
+        val actions = mutableListOf<String>()
         val lines = response.trim().split("\n")
+        
         for (line in lines) {
-            val trimmed = line.trim().uppercase()
-            if (trimmed.startsWith("TYPE:") || 
-                trimmed.startsWith("KEY:") || 
-                trimmed.startsWith("CLICK:") ||
-                trimmed.startsWith("MOVE:") ||
-                trimmed == "LEFTCLICK" ||
-                trimmed == "RIGHTCLICK" ||
-                trimmed == "DOUBLECLICK" ||
-                trimmed == "WAIT" ||
-                trimmed == "DONE") {
-                return line.trim() // Keep original case for TYPE content
+            val trimmed = line.trim()
+            val upper = trimmed.uppercase()
+            if (upper.startsWith("TYPE:") || 
+                upper.startsWith("KEY:") || 
+                upper.startsWith("CLICK:") ||
+                upper.startsWith("MOVE:") ||
+                upper == "LEFTCLICK" ||
+                upper == "RIGHTCLICK" ||
+                upper == "DOUBLECLICK" ||
+                upper == "WAIT" ||
+                upper == "DONE") {
+                actions.add(trimmed) // Keep original case for TYPE content
             }
         }
-        return "WAIT"
+        
+        return actions
+    }
+    
+    private fun processAction(action: String) {
+        updateStatus("Action: $action")
+        
+        // Track action history
+        actionHistory.add(action)
+        if (actionHistory.size > 10) {
+            actionHistory.removeAt(0)
+        }
+        
+        // Log the action to the scrollable log
+        appendToLog("→ $action")
+        
+        // Handle action
+        if (action.uppercase() == "DONE") {
+            Log.d(TAG, "Task marked as DONE")
+            appendToLog("✅ Task complete!")
+            pendingActions.clear() // Clear any remaining queued actions
+            isTaskComplete = true
+        } else if (action.uppercase() == "WAIT") {
+            consecutiveWaits++
+            Log.d(TAG, "WAIT action, consecutiveWaits=$consecutiveWaits")
+            // On WAIT, clear pending actions and re-evaluate with fresh screenshot
+            if (consecutiveWaits >= maxConsecutiveWaits) {
+                pendingActions.clear()
+                appendToLog("⚡ Re-evaluating...")
+            }
+        } else {
+            consecutiveWaits = 0
+            lastActionTimeMs = System.currentTimeMillis()
+            lastMeaningfulAction = action
+            Log.d(TAG, "Executing action: $action")
+            executeAction(action)
+        }
     }
     
     // Estimated mouse position (assume screen is ~1440x900 ish, start at center)
