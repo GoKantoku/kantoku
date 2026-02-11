@@ -60,13 +60,6 @@ class SetupActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        // If already set up, go straight to main
-        if (isSetupComplete(this)) {
-            startMainActivity()
-            return
-        }
-        
         setContentView(R.layout.activity_setup)
         
         etApiKey = findViewById(R.id.etApiKey)

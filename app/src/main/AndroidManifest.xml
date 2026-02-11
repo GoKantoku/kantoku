@@ -26,7 +26,7 @@
         android:theme="@style/Theme.VisionController">
         
         <activity
-            android:name=".SetupActivity"
+            android:name=".OnboardingActivity"
             android:exported="true"
             android:theme="@style/Theme.VisionController">
             <intent-filter>
@@ -34,6 +34,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        
+        <activity
+            android:name=".SetupActivity"
+            android:exported="false"
+            android:theme="@style/Theme.VisionController" />
         
         <activity
             android:name=".PlanActivity"
