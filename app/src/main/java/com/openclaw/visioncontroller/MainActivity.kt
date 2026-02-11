@@ -78,6 +78,30 @@ class MainActivity : AppCompatActivity() {
     private var lastClickTimeMs = 0L
     private val postClickWaitMs = 10_000L  // Wait 10 seconds after clicks
     
+    /**
+     * Build API request with correct auth headers.
+     * Auto-detects API key vs setup token based on prefix.
+     */
+    private fun buildApiRequest(jsonBody: String): Request {
+        val isApiKey = apiKey.startsWith("sk-ant-")
+        
+        val builder = Request.Builder()
+            .url(apiEndpoint)
+            .addHeader("anthropic-version", "2023-06-01")
+            .addHeader("content-type", "application/json")
+            .post(jsonBody.toRequestBody("application/json".toMediaType()))
+        
+        if (isApiKey) {
+            builder.addHeader("x-api-key", apiKey)
+        } else {
+            // Setup token uses Bearer auth + OAuth beta header
+            builder.addHeader("Authorization", "Bearer $apiKey")
+            builder.addHeader("anthropic-beta", "oauth-2025-04-20")
+        }
+        
+        return builder.build()
+    }
+    
     // Idle mode configuration
     private var isIdleMode = false
     private var lastIdleActionMs = 0L
@@ -652,13 +676,7 @@ class MainActivity : AppCompatActivity() {
             })
         }
         
-        val request = Request.Builder()
-            .url(apiEndpoint)
-            .addHeader("x-api-key", apiKey)
-            .addHeader("anthropic-version", "2023-06-01")
-            .addHeader("content-type", "application/json")
-            .post(json.toString().toRequestBody("application/json".toMediaType()))
-            .build()
+        val request = buildApiRequest(json.toString())
         
         val response = client.newCall(request).execute()
         val responseBody = response.body?.string() ?: throw Exception("Empty response")
@@ -854,15 +872,10 @@ class MainActivity : AppCompatActivity() {
         }
         
         Log.d(TAG, "Making API request to $apiEndpoint")
-        Log.d(TAG, "API key starts with: ${apiKey.take(20)}...")
+        Log.d(TAG, "Credential starts with: ${apiKey.take(20)}...")
+        Log.d(TAG, "Auth type: ${if (apiKey.startsWith("sk-ant-")) "API Key" else "Setup Token"}")
         
-        val request = Request.Builder()
-            .url(apiEndpoint)
-            .addHeader("x-api-key", apiKey)
-            .addHeader("anthropic-version", "2023-06-01")
-            .addHeader("content-type", "application/json")
-            .post(json.toString().toRequestBody("application/json".toMediaType()))
-            .build()
+        val request = buildApiRequest(json.toString())
         
         Log.d(TAG, "Executing HTTP request...")
         val response = client.newCall(request).execute()

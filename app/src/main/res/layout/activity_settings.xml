@@ -72,14 +72,14 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="API Key"
+                        android:text="Anthropic Credentials"
                         style="@style/Kantoku.Heading.Small"
                         android:layout_marginBottom="8dp" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Your Anthropic API key for Claude vision"
+                        android:text="Enter your API key or setup token for Claude vision"
                         style="@style/Kantoku.Body.Secondary"
                         android:layout_marginBottom="12dp" />
 
@@ -98,7 +98,7 @@
                         android:id="@+id/tilApiKey"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="New API Key"
+                        android:hint="API Key or Setup Token"
                         app:endIconMode="password_toggle"
                         app:boxStrokeColor="@color/indigo"
                         app:hintTextColor="@color/hai"
@@ -127,6 +127,54 @@
                         android:textSize="13sp"
                         android:layout_marginTop="8dp"
                         android:visibility="gone" />
+
+                    <!-- Helper buttons -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="16dp">
+
+                        <TextView
+                            android:id="@+id/btnGetToken"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Get Setup Token"
+                            android:textSize="13sp"
+                            android:textColor="@color/indigo"
+                            android:gravity="center"
+                            android:padding="8dp"
+                            android:background="?attr/selectableItemBackground" />
+
+                        <View
+                            android:layout_width="1dp"
+                            android:layout_height="match_parent"
+                            android:background="@color/hai"
+                            android:alpha="0.3" />
+
+                        <TextView
+                            android:id="@+id/btnGetApiKey"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Get API Key"
+                            android:textSize="13sp"
+                            android:textColor="@color/indigo"
+                            android:gravity="center"
+                            android:padding="8dp"
+                            android:background="?attr/selectableItemBackground" />
+
+                    </LinearLayout>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Setup token uses your Claude Max/Pro subscription"
+                        android:textSize="11sp"
+                        android:textColor="@color/hai"
+                        android:layout_marginTop="8dp"
+                        android:alpha="0.7" />
 
                 </LinearLayout>
             </androidx.cardview.widget.CardView>

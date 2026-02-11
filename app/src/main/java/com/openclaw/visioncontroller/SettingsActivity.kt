@@ -1,5 +1,7 @@
 package com.openclaw.visioncontroller
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.widget.AdapterView
@@ -22,6 +24,9 @@ class SettingsActivity : AppCompatActivity() {
             "Read NPR.org \uD83E\uDD13" to SetupActivity.IDLE_NPR,
             "Randomly select" to SetupActivity.IDLE_RANDOM
         )
+        
+        const val URL_GET_TOKEN = "https://docs.anthropic.com/en/docs/claude-code/getting-started"
+        const val URL_GET_API_KEY = "https://console.anthropic.com/settings/keys"
     }
 
     private lateinit var tilApiKey: TextInputLayout
@@ -31,6 +36,8 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var btnSave: Button
     private lateinit var btnBack: ImageButton
     private lateinit var tvError: TextView
+    private lateinit var btnGetToken: TextView
+    private lateinit var btnGetApiKey: TextView
 
     private var selectedIdleMode = SetupActivity.IDLE_RANDOM
 
@@ -45,6 +52,8 @@ class SettingsActivity : AppCompatActivity() {
         btnSave = findViewById(R.id.btnSave)
         btnBack = findViewById(R.id.btnBack)
         tvError = findViewById(R.id.tvError)
+        btnGetToken = findViewById(R.id.btnGetToken)
+        btnGetApiKey = findViewById(R.id.btnGetApiKey)
 
         setupUI()
         displayCurrentKey()
@@ -59,21 +68,40 @@ class SettingsActivity : AppCompatActivity() {
         btnSave.setOnClickListener {
             saveSettings()
         }
+
+        btnGetToken.setOnClickListener {
+            openUrl(URL_GET_TOKEN)
+        }
+
+        btnGetApiKey.setOnClickListener {
+            openUrl(URL_GET_API_KEY)
+        }
+    }
+
+    private fun openUrl(url: String) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(this, "Could not open browser", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun displayCurrentKey() {
         val currentKey = SetupActivity.getApiKey(this)
         if (currentKey.isNotEmpty()) {
-            // Mask the key, showing only first 10 and last 4 characters
+            // Detect type and mask appropriately
+            val isApiKey = currentKey.startsWith("sk-ant-")
+            val typeLabel = if (isApiKey) "API Key" else "Token"
             val masked = if (currentKey.length > 14) {
                 "${currentKey.take(10)}...${currentKey.takeLast(4)}"
             } else {
                 "****"
             }
-            tvCurrentKey.text = "Current: $masked"
+            tvCurrentKey.text = "Current ($typeLabel): $masked"
             tvCurrentKey.visibility = View.VISIBLE
         } else {
-            tvCurrentKey.text = "No API key configured"
+            tvCurrentKey.text = "No credentials configured"
             tvCurrentKey.visibility = View.VISIBLE
         }
     }
@@ -109,19 +137,23 @@ class SettingsActivity : AppCompatActivity() {
         // Save idle mode (always)
         SetupActivity.saveIdleMode(this, selectedIdleMode)
 
-        // Save API key only if provided
-        val apiKey = etApiKey.text.toString().trim()
-        if (apiKey.isNotEmpty()) {
-            if (!apiKey.startsWith("sk-ant-")) {
-                showError("Invalid API key format. Should start with sk-ant-")
+        // Save credentials only if provided
+        val credential = etApiKey.text.toString().trim()
+        if (credential.isNotEmpty()) {
+            // Basic validation - must be reasonably long
+            if (credential.length < 20) {
+                showError("Credential looks too short. Please paste the full key or token.")
                 return
             }
-            SetupActivity.saveApiKey(this, apiKey)
+            SetupActivity.saveApiKey(this, credential)
             displayCurrentKey()
             etApiKey.text?.clear()
+            
+            val credType = if (credential.startsWith("sk-ant-")) "API key" else "setup token"
+            Toast.makeText(this, "Saved $credType", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(this, "Settings saved", Toast.LENGTH_SHORT).show()
         }
-
-        Toast.makeText(this, "Settings saved", Toast.LENGTH_SHORT).show()
     }
 
     private fun showError(message: String) {
