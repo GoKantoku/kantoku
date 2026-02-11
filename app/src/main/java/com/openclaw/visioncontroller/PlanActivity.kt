@@ -115,10 +115,13 @@ class PlanActivity : AppCompatActivity() {
 
     private fun getSelectedDuration(): Long {
         return when (rgDuration.checkedRadioButtonId) {
-            R.id.rb2min -> 2 * 60 * 1000L
             R.id.rb5min -> 5 * 60 * 1000L
-            R.id.rb10min -> 10 * 60 * 1000L
+            R.id.rb15min -> 15 * 60 * 1000L
             R.id.rb30min -> 30 * 60 * 1000L
+            R.id.rb1hour -> 60 * 60 * 1000L
+            R.id.rb2hour -> 2 * 60 * 60 * 1000L
+            R.id.rb4hour -> 4 * 60 * 60 * 1000L
+            R.id.rb8hour -> 8 * 60 * 60 * 1000L
             else -> 5 * 60 * 1000L
         }
     }
