@@ -80,7 +80,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="1. Open Bluetooth settings\n2. Look for 'Kantoku' in available devices\n3. Pair and connect to it"
+                        android:text="1. Open Bluetooth settings\n2. Look for your phone in available devices\n3. Pair and connect to it"
                         style="@style/Kantoku.Body"
                         android:lineSpacingMultiplier="1.5"
                         android:layout_marginBottom="16dp" />
