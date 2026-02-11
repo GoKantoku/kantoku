@@ -77,6 +77,17 @@ class MainActivity : AppCompatActivity() {
     private var lastClickTimeMs = 0L
     private val postClickWaitMs = 10_000L  // Wait 10 seconds after clicks
     
+    // Idle mode configuration
+    private var isIdleMode = false
+    private var lastIdleActionMs = 0L
+    private var idleActionCount = 0
+    private val idleIntervalMs = 60_000L           // 60 seconds between simple actions
+    private val idleBrowseIntervalMs = 5 * 60_000L // 5 minutes between vision-guided browsing
+    private val idleUrls = listOf(
+        "https://en.wikipedia.org/wiki/Special:Random",
+        "https://www.google.com/maps/@0,0,3z"
+    )
+    
     companion object {
         private const val TAG = "Kantoku"  // Easy to grep
         private const val REQUEST_PERMISSIONS = 1001
@@ -441,9 +452,204 @@ class MainActivity : AppCompatActivity() {
             Log.d(TAG, "Vision loop ended. isRunning=$isRunning, isTaskComplete=$isTaskComplete")
             
             if (isTaskComplete) {
-                updateStatus("✅ Task completed!")
+                updateStatus("✅ Task completed! Starting idle mode...")
+                appendToLog("🌙 Entering idle mode...")
+                startIdleMode()
             }
         }
+    }
+    
+    private fun startIdleMode() {
+        isIdleMode = true
+        isRunning = true
+        lastIdleActionMs = System.currentTimeMillis()
+        idleActionCount = 0
+        
+        binding.btnStart.text = "Stop Idle"
+        
+        scope.launch {
+            Log.d(TAG, "Idle mode started")
+            
+            while (isRunning && isIdleMode) {
+                val now = System.currentTimeMillis()
+                val timeSinceLastAction = now - lastIdleActionMs
+                
+                // Every 5 minutes: vision-guided browsing
+                if (idleActionCount > 0 && idleActionCount % 5 == 0) {
+                    Log.d(TAG, "Idle: Vision-guided browsing")
+                    appendToLog("🔍 Exploring...")
+                    idleBrowseWithVision()
+                } else {
+                    // Simple keep-alive action
+                    Log.d(TAG, "Idle: Simple keep-alive action")
+                    performIdleAction()
+                }
+                
+                lastIdleActionMs = System.currentTimeMillis()
+                idleActionCount++
+                
+                runOnUiThread {
+                    binding.tvLastAction.text = "Idle mode • Action #$idleActionCount"
+                    updateStatus("🌙 Idle mode active")
+                }
+                
+                // Wait 60 seconds before next action
+                delay(idleIntervalMs)
+            }
+            
+            Log.d(TAG, "Idle mode ended")
+        }
+    }
+    
+    private fun performIdleAction() {
+        // Simple actions that don't need vision API
+        val action = when ((0..4).random()) {
+            0 -> {
+                // Mouse wiggle
+                appendToLog("🖱️ Mouse wiggle")
+                val dx = (-20..20).random()
+                val dy = (-20..20).random()
+                moveMouse(dx, dy)
+                Thread.sleep(200)
+                moveMouse(-dx, -dy)  // Return to original position
+            }
+            1 -> {
+                // Scroll down then up
+                appendToLog("📜 Scroll")
+                sendKey("pagedown")
+                Thread.sleep(500)
+                sendKey("pageup")
+            }
+            2 -> {
+                // Small mouse movement
+                appendToLog("🖱️ Mouse drift")
+                val dx = (-30..30).random()
+                val dy = (-30..30).random()
+                moveMouse(dx, dy)
+                mouseX += dx
+                mouseY += dy
+            }
+            3 -> {
+                // Press and release shift (harmless)
+                appendToLog("⌨️ Key tap")
+                sendKeyReport(0x02, 0)  // Shift down
+                Thread.sleep(50)
+                sendKeyReport(0, 0)     // Release
+            }
+            else -> {
+                // Just wait (do nothing visible)
+                appendToLog("💤 Waiting...")
+            }
+        }
+    }
+    
+    private suspend fun idleBrowseWithVision() {
+        // Open a random interesting URL
+        val url = idleUrls.random()
+        appendToLog("🌐 Opening $url")
+        
+        // Open new tab and navigate
+        withContext(Dispatchers.Main) {
+            sendKey("cmd+t")
+        }
+        delay(500)
+        withContext(Dispatchers.Main) {
+            sendText(url)
+        }
+        delay(200)
+        withContext(Dispatchers.Main) {
+            sendKey("enter")
+        }
+        
+        // Wait for page to load
+        delay(3000)
+        
+        // Now use vision to explore the page
+        withContext(Dispatchers.IO) {
+            try {
+                val bitmap = withContext(Dispatchers.Main) { binding.viewFinder.bitmap }
+                if (bitmap != null) {
+                    val outputStream = ByteArrayOutputStream()
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
+                    val base64Image = Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
+                    
+                    val response = callIdleVisionAI(base64Image)
+                    val actions = parseAllActions(response)
+                    
+                    // Execute just a few casual actions
+                    for (action in actions.take(3)) {
+                        withContext(Dispatchers.Main) {
+                            appendToLog("→ $action")
+                            executeAction(action)
+                        }
+                        delay(2000)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Idle browse failed: ${e.message}")
+                appendToLog("⚠️ Browse error: ${e.message}")
+            }
+        }
+    }
+    
+    private fun callIdleVisionAI(base64Image: String): String {
+        val prompt = """You are casually browsing the web to keep a computer active.
+            |
+            |Look at the screen and do something interesting but harmless:
+            |- Scroll around to read content
+            |- Click an interesting link
+            |- Explore the page naturally
+            |
+            |Respond with 2-3 simple commands:
+            |- KEY:pagedown / KEY:pageup (scroll)
+            |- CLICK:x,y (click something interesting)
+            |- MOVE:dx,dy (move mouse around)
+            |- WAIT (pause to "read")
+            |
+            |Be casual and curious, like a human browsing.""".trimMargin()
+        
+        val json = JSONObject().apply {
+            put("model", "claude-sonnet-4-20250514")
+            put("max_tokens", 150)
+            put("messages", JSONArray().apply {
+                put(JSONObject().apply {
+                    put("role", "user")
+                    put("content", JSONArray().apply {
+                        put(JSONObject().apply {
+                            put("type", "image")
+                            put("source", JSONObject().apply {
+                                put("type", "base64")
+                                put("media_type", "image/jpeg")
+                                put("data", base64Image)
+                            })
+                        })
+                        put(JSONObject().apply {
+                            put("type", "text")
+                            put("text", prompt)
+                        })
+                    })
+                })
+            })
+        }
+        
+        val request = Request.Builder()
+            .url(apiEndpoint)
+            .addHeader("x-api-key", apiKey)
+            .addHeader("anthropic-version", "2023-06-01")
+            .addHeader("content-type", "application/json")
+            .post(json.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+        
+        val response = client.newCall(request).execute()
+        val responseBody = response.body?.string() ?: throw Exception("Empty response")
+        
+        if (!response.isSuccessful) {
+            throw Exception("API error: $responseBody")
+        }
+        
+        val responseJson = JSONObject(responseBody)
+        val content = responseJson.getJSONArray("content")
+        return content.getJSONObject(0).getString("text")
     }
     
     private fun calculateNextInterval(): Long {
@@ -477,6 +683,7 @@ class MainActivity : AppCompatActivity() {
     
     private fun stopVisionLoop() {
         isRunning = false
+        isIdleMode = false
         binding.btnStart.text = "Done"
         updateStatus("Stopped")
     }
