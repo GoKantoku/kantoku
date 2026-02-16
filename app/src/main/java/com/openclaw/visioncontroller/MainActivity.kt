@@ -780,11 +780,15 @@ class MainActivity : AppCompatActivity() {
                 Log.d(TAG, "Calling Vision API (recovery=$isRecoveryMode)...")
                 val response = callVisionAI(base64Image, isRecoveryMode)
                 Log.d(TAG, "Vision API response: $response")
-                val action = parseAction(response)
-                Log.d(TAG, "Parsed action: $action")
+                val actions = parseAllActions(response)
+                Log.d(TAG, "Parsed ${actions.size} actions")
                 
                 withContext(Dispatchers.Main) {
-                    processAction(action)
+                    if (actions.isNotEmpty()) {
+                        pendingActions.clear()
+                        pendingActions.addAll(actions)
+                        appendToLog("📋 Planned ${actions.size} steps")
+                    }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Vision analysis failed: ${e.message}", e)
