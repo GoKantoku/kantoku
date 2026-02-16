@@ -486,8 +486,22 @@ class MainActivity : AppCompatActivity() {
                 if (pendingActions.isNotEmpty()) {
                     val nextAction = pendingActions.removeAt(0)
                     Log.d(TAG, "Executing queued action: $nextAction")
-                    runOnUiThread {
-                        processAction(nextAction)
+                    val upper = nextAction.uppercase()
+                    if (upper.startsWith("CLICKTARGET:") || upper.startsWith("CLICK:")) {
+                        // Handle CLICKTARGET in the main loop so it blocks
+                        val description = if (upper.startsWith("CLICKTARGET:")) {
+                            nextAction.substring(12)
+                        } else {
+                            nextAction.substring(6)
+                        }
+                        withContext(Dispatchers.Main) {
+                            appendToLog("🎯 Targeting: $description")
+                        }
+                        visualNudgeAndClick(description)
+                    } else {
+                        withContext(Dispatchers.Main) {
+                            processAction(nextAction)
+                        }
                     }
                 } else {
                     // Capture and analyze for new plan
@@ -865,7 +879,7 @@ class MainActivity : AppCompatActivity() {
             |
             |Try a DIFFERENT approach than what you already tried.
             |
-            |Respond with 3-5 commands, one per line:
+            |Respond with 5-10 commands, one per line:
             |- TYPE:text (type text into focused field)
             |- KEY:keyname (enter, tab, escape, space, cmd+space, cmd+tab, cmd+w, cmd+n, etc.)
             |- CLICKTARGET:description (click a UI element, describe what to click)
@@ -889,7 +903,7 @@ class MainActivity : AppCompatActivity() {
             |
             |⚠️ FIRST PRIORITY: Close any distractions (popups, unrelated windows, dialogs).
             |
-            |Then plan the NEXT 3-5 STEPS to make progress on the task.
+            |Then plan the NEXT 5-10 STEPS to make progress on the task.
             |
             |⚠️ BEFORE TYPING: Is the correct app visible and the right field focused?
             |- NEVER type unless you can SEE the focused input field
@@ -912,7 +926,7 @@ class MainActivity : AppCompatActivity() {
         
         val json = JSONObject().apply {
             put("model", "claude-sonnet-4-20250514")
-            put("max_tokens", 300)
+            put("max_tokens", 500)
             put("messages", JSONArray().apply {
                 put(JSONObject().apply {
                     put("role", "user")
@@ -1189,19 +1203,10 @@ class MainActivity : AppCompatActivity() {
                 sendKey(key)
             }
             upper.startsWith("CLICKTARGET:") || upper.startsWith("CLICK:") -> {
-                // Visual nudge-to-target loop
-                val description = if (upper.startsWith("CLICKTARGET:")) {
-                    action.substring(12)
-                } else {
-                    // Legacy CLICK:x,y — treat coords as hint, still use visual loop
-                    action.substring(6)
-                }
-                Log.d(TAG, "CLICKTARGET: $description")
-                appendToLog("🎯 Targeting: $description")
-                
-                scope.launch {
-                    visualNudgeAndClick(description)
-                }
+                // Should be handled in the main loop for blocking behavior
+                // This is a fallback if called directly from processAction
+                Log.w(TAG, "CLICKTARGET in executeAction fallback — should be handled in main loop")
+                appendToLog("⚠️ CLICKTARGET fallback")
             }
             upper.startsWith("MOVE:") -> {
                 // Format: MOVE:dx,dy (relative movement)
