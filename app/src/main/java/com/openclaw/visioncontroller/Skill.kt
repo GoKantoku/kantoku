@@ -20,7 +20,7 @@ object SkillManager {
     private val builtInSkills = listOf(
         Skill(
             id = "general",
-            name = "General (No Skill)",
+            name = "Generalist",
             description = "No specific instructions, just complete the task",
             instructions = "",
             icon = "🎯"

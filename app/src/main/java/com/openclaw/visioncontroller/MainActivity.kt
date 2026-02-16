@@ -53,7 +53,6 @@ class MainActivity : AppCompatActivity() {
     
     // Task execution state
     private var currentTask = ""
-    private var currentSkill: Skill? = null
     private var durationMs = 5 * 60 * 1000L
     private var startTimeMs = 0L
     private var lastActionTimeMs = 0L
@@ -61,6 +60,12 @@ class MainActivity : AppCompatActivity() {
     private var consecutiveWaits = 0
     private val actionHistory = mutableListOf<String>()
     private var isTaskComplete = false
+    
+    // Subtask system
+    private val subtasks = mutableListOf<String>()
+    private var currentSubtaskIndex = 0
+    private var iterationsSinceSubtaskCheck = 0
+    private val checkSubtaskEveryN = 5  // Check if subtask is done every 5 iterations
     
     // Action log for display
     private val actionLog = StringBuilder()
@@ -76,7 +81,7 @@ class MainActivity : AppCompatActivity() {
     
     // Track if we just performed a click (for longer wait)
     private var lastClickTimeMs = 0L
-    private val postClickWaitMs = 10_000L  // Wait 10 seconds after clicks
+    private val postClickWaitMs = 3_000L  // Wait 3 seconds after clicks
     
     /**
      * Build API request with correct auth headers.
@@ -210,10 +215,6 @@ class MainActivity : AppCompatActivity() {
         // Load API key and preferences
         apiKey = SetupActivity.getApiKey(this)
         idleModePreference = SetupActivity.getIdleMode(this)
-        
-        // Load skill
-        val skillId = intent.getStringExtra(PlanActivity.EXTRA_SKILL_ID) ?: "general"
-        currentSkill = SkillManager.getSkillById(this, skillId)
         
         val bluetoothManager = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
         bluetoothAdapter = bluetoothManager.adapter
@@ -430,14 +431,32 @@ class MainActivity : AppCompatActivity() {
         lastActionTimeMs = startTimeMs
         consecutiveWaits = 0
         actionHistory.clear()
+        subtasks.clear()
+        currentSubtaskIndex = 0
+        iterationsSinceSubtaskCheck = 0
         
         binding.btnStart.text = "Stop"
-        updateStatus("Starting: $currentTask")
+        updateStatus("Planning: $currentTask")
         Log.d(TAG, "Vision loop starting, HID connected: ${connectedDevice != null}")
         appendToLog("🚀 Starting vision loop...")
         appendToLog("Duration: ${durationMs / 60000} minutes")
         
         scope.launch {
+            // First, plan subtasks
+            appendToLog("📋 Planning subtasks...")
+            try {
+                val planned = planSubtasks(currentTask)
+                subtasks.addAll(planned)
+                appendToLog("📋 ${subtasks.size} subtasks planned:")
+                subtasks.forEachIndexed { i, task -> 
+                    appendToLog("  ${i+1}. $task")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Subtask planning failed: ${e.message}")
+                appendToLog("⚠️ Planning failed, proceeding with main task")
+                subtasks.add(currentTask)  // Fall back to original task
+            }
+            updateStatus("Working: ${getCurrentSubtask()}")
             Log.d(TAG, "Vision loop coroutine started")
             var loopCount = 0
             while (isRunning && !isTaskComplete) {
@@ -763,87 +782,131 @@ class MainActivity : AppCompatActivity() {
         }
     }
     
-    private fun callVisionAI(base64Image: String, isRecoveryMode: Boolean): String {
-        val recentActions = actionHistory.takeLast(5).joinToString("\n")
-        
-        // Build skill instructions section if a skill is selected
-        val skillSection = if (currentSkill != null && currentSkill!!.instructions.isNotEmpty()) {
-            """
-            |
-            |SKILL KNOWLEDGE (${currentSkill!!.name}):
-            |${currentSkill!!.instructions}
-            |""".trimMargin()
+    private fun getCurrentSubtask(): String {
+        return if (subtasks.isNotEmpty() && currentSubtaskIndex < subtasks.size) {
+            subtasks[currentSubtaskIndex]
+        } else {
+            currentTask
+        }
+    }
+    
+    private fun getSubtaskProgress(): String {
+        return if (subtasks.size > 1) {
+            "Subtask ${currentSubtaskIndex + 1}/${subtasks.size}"
         } else {
             ""
         }
+    }
+    
+    private fun planSubtasks(task: String): List<String> {
+        val prompt = """Break this task into 3-5 simple sequential subtasks.
+            |
+            |TASK: $task
+            |
+            |Rules:
+            |- Each subtask should be a single clear action
+            |- Keep subtasks short and specific
+            |- Include opening apps, navigating, typing, etc. as separate steps
+            |
+            |Respond with ONLY the subtasks, one per line, numbered:
+            |1. First subtask
+            |2. Second subtask
+            |etc.""".trimMargin()
+        
+        val json = JSONObject().apply {
+            put("model", "claude-sonnet-4-20250514")
+            put("max_tokens", 200)
+            put("messages", JSONArray().apply {
+                put(JSONObject().apply {
+                    put("role", "user")
+                    put("content", prompt)
+                })
+            })
+        }
+        
+        val request = buildApiRequest(json.toString())
+        val response = client.newCall(request).execute()
+        val responseBody = response.body?.string() ?: throw Exception("Empty response")
+        
+        if (!response.isSuccessful) {
+            throw Exception("API error: $responseBody")
+        }
+        
+        val responseJson = JSONObject(responseBody)
+        val content = responseJson.getJSONArray("content")
+        val text = content.getJSONObject(0).getString("text")
+        
+        // Parse numbered list
+        return text.lines()
+            .map { it.trim() }
+            .filter { it.matches(Regex("^\\d+\\..*")) }
+            .map { it.replace(Regex("^\\d+\\.\\s*"), "") }
+            .filter { it.isNotBlank() }
+    }
+    
+    private fun callVisionAI(base64Image: String, isRecoveryMode: Boolean): String {
+        val recentActions = actionHistory.takeLast(15).joinToString("\n")
+        val subtaskInfo = if (subtasks.size > 1) {
+            "\n|PROGRESS: ${getSubtaskProgress()}\n|OVERALL GOAL: $currentTask"
+        } else ""
+        val currentSubtask = getCurrentSubtask()
         
         val prompt = if (isRecoveryMode) {
-            """You are controlling a computer via keyboard and mouse. You seem to be stuck.
+            """You are controlling a computer via keyboard and mouse. You seem stuck.
             |
-            |YOUR TASK: $currentTask
-            |$skillSection
+            |CURRENT SUBTASK: $currentSubtask$subtaskInfo
+            |
             |RECENT ACTIONS (may not have worked):
             |$recentActions
             |
-            |⚠️ FIRST: Check for popups/dialogs blocking the screen:
-            |- Cookie consent banners → click "Accept" or "OK" or close button
-            |- System notifications → dismiss them
-            |- Permission dialogs → click "Allow" or "OK" 
-            |- Update prompts → click "Later" or "Not Now" or close
-            |- Any modal/overlay → close it before continuing
+            |⚠️ FIRST: Close anything blocking:
+            |- KEY:escape (close dialogs, popups, menus)
+            |- KEY:cmd+w (close unrelated windows)
             |
-            |Then try a DIFFERENT approach. Maybe:
-            |- Click somewhere with the mouse
-            |- Use a keyboard shortcut (KEY:escape often closes dialogs)
-            |- Try a different method
+            |Try a DIFFERENT approach than what you already tried.
             |
-            |Respond with a PLAN of 3-5 commands to try, one per line:
-            |- TYPE:text (type text)
-            |- KEY:keyname (press key: enter, tab, escape, space, cmd+space, cmd+n, etc.)
-            |- CLICK:x,y (click at screen coordinates, e.g., CLICK:100,200)
-            |- MOVE:dx,dy (move mouse by relative amount)
-            |- LEFTCLICK / RIGHTCLICK / DOUBLECLICK (click at current position)
-            |- WAIT (if waiting for something)
-            |- DONE (if task is complete)
+            |Respond with 3-5 commands, one per line:
+            |- TYPE:text (type text into focused field)
+            |- KEY:keyname (enter, tab, escape, space, cmd+space, cmd+tab, cmd+w, cmd+n, etc.)
+            |- CLICKTARGET:description (click a UI element, describe what to click)
+            |- WAIT (pause for something to load)
+            |- SUBTASK_DONE (current subtask complete)
+            |- DONE (all tasks complete)
+            |
+            |⚠️ NEVER type unless you can SEE the focused text field.
             |
             |Example plan:
             |KEY:escape
-            |CLICK:850,520
+            |CLICKTARGET:Safari icon in dock
             |WAIT""".trimMargin()
         } else {
             """You are controlling a computer via keyboard and mouse to complete a task.
             |
-            |YOUR TASK: $currentTask
-            |$skillSection
+            |CURRENT SUBTASK: $currentSubtask$subtaskInfo
+            |
             |RECENT ACTIONS:
             |${if (recentActions.isEmpty()) "None yet" else recentActions}
             |
-            |⚠️ FIRST PRIORITY: Check for and dismiss any popups/dialogs:
-            |- Cookie consent banners → click "Accept", "OK", "Got it", or X button
-            |- System notifications/alerts → dismiss or close them
-            |- Permission dialogs → click "Allow" or "OK"
-            |- Software update prompts → click "Later", "Not Now", or close
-            |- Newsletter/signup popups → click X or "No thanks"
-            |- Any modal or overlay blocking the screen → close it first
+            |⚠️ FIRST PRIORITY: Close any distractions (popups, unrelated windows, dialogs).
             |
-            |After clearing popups, plan the NEXT 3-5 STEPS to make progress on the task.
+            |Then plan the NEXT 3-5 STEPS to make progress on the task.
+            |
+            |⚠️ BEFORE TYPING: Is the correct app visible and the right field focused?
+            |- NEVER type unless you can SEE the focused input field
             |
             |Respond with multiple commands, one per line:
-            |- TYPE:text (type text)
-            |- KEY:keyname (press key: enter, tab, escape, space, cmd+space, cmd+n, etc.)
-            |- CLICK:x,y (click at screen coordinates, e.g., CLICK:100,200)
-            |- MOVE:dx,dy (move mouse by relative amount)
-            |- LEFTCLICK / RIGHTCLICK / DOUBLECLICK (click at current position)
+            |- TYPE:text (type text into focused field)
+            |- KEY:keyname (enter, tab, escape, space, cmd+space, cmd+tab, cmd+w, cmd+n, shift+tab, etc.)
+            |- CLICKTARGET:description (click a UI element — describe what to click, e.g. "Send button", "address bar")
             |- WAIT (if waiting for something to load)
-            |- DONE (if task is complete)
-            |
-            |Prefer keyboard shortcuts when available. KEY:escape often closes dialogs.
+            |- SUBTASK_DONE (if current subtask is complete, move to next)
+            |- DONE (if ALL tasks are complete)
             |
             |Example plan:
-            |CLICK:920,45
+            |CLICKTARGET:Safari icon in dock
             |WAIT
-            |KEY:cmd+space
-            |TYPE:Notes
+            |CLICKTARGET:address bar
+            |TYPE:google.com
             |KEY:enter""".trimMargin()
         }
         
@@ -872,8 +935,6 @@ class MainActivity : AppCompatActivity() {
         }
         
         Log.d(TAG, "Making API request to $apiEndpoint")
-        Log.d(TAG, "Credential starts with: ${apiKey.take(20)}...")
-        Log.d(TAG, "Auth type: ${if (apiKey.startsWith("sk-ant-")) "API Key" else "Setup Token"}")
         
         val request = buildApiRequest(json.toString())
         
@@ -919,12 +980,14 @@ class MainActivity : AppCompatActivity() {
             val upper = trimmed.uppercase()
             if (upper.startsWith("TYPE:") || 
                 upper.startsWith("KEY:") || 
+                upper.startsWith("CLICKTARGET:") ||
                 upper.startsWith("CLICK:") ||
                 upper.startsWith("MOVE:") ||
                 upper == "LEFTCLICK" ||
                 upper == "RIGHTCLICK" ||
                 upper == "DOUBLECLICK" ||
                 upper == "WAIT" ||
+                upper == "SUBTASK_DONE" ||
                 upper == "DONE") {
                 actions.add(trimmed) // Keep original case for TYPE content
             }
@@ -938,7 +1001,7 @@ class MainActivity : AppCompatActivity() {
         
         // Track action history
         actionHistory.add(action)
-        if (actionHistory.size > 10) {
+        if (actionHistory.size > 20) {
             actionHistory.removeAt(0)
         }
         
@@ -948,9 +1011,21 @@ class MainActivity : AppCompatActivity() {
         // Handle action
         if (action.uppercase() == "DONE") {
             Log.d(TAG, "Task marked as DONE")
-            appendToLog("✅ Task complete!")
+            appendToLog("✅ All tasks complete!")
             pendingActions.clear() // Clear any remaining queued actions
             isTaskComplete = true
+        } else if (action.uppercase() == "SUBTASK_DONE") {
+            Log.d(TAG, "Subtask marked as DONE")
+            pendingActions.clear() // Clear any remaining queued actions
+            actionHistory.clear() // Clear history for fresh start
+            if (currentSubtaskIndex < subtasks.size - 1) {
+                currentSubtaskIndex++
+                appendToLog("✅ Subtask complete! Moving to: ${getCurrentSubtask()}")
+                updateStatus("Working: ${getCurrentSubtask()}")
+            } else {
+                appendToLog("✅ All subtasks complete!")
+                isTaskComplete = true
+            }
         } else if (action.uppercase() == "WAIT") {
             consecutiveWaits++
             Log.d(TAG, "WAIT action, consecutiveWaits=$consecutiveWaits")
@@ -972,6 +1047,134 @@ class MainActivity : AppCompatActivity() {
     private var mouseX = 720
     private var mouseY = 450
     
+    private suspend fun visualNudgeAndClick(targetDescription: String, maxNudges: Int = 6) {
+        for (attempt in 1..maxNudges) {
+            // Capture current view
+            val bitmap = withContext(Dispatchers.Main) { binding.viewFinder.bitmap }
+            if (bitmap == null) {
+                Log.e(TAG, "visualNudgeAndClick: bitmap is NULL")
+                return
+            }
+            
+            val outputStream = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
+            val base64Image = Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
+            
+            withContext(Dispatchers.Main) {
+                appendToLog("👁️ Looking for target (attempt $attempt/$maxNudges)...")
+            }
+            
+            val response = withContext(Dispatchers.IO) {
+                callNudgeAI(base64Image, targetDescription, attempt)
+            }
+            
+            val trimmed = response.trim()
+            val upper = trimmed.uppercase()
+            Log.d(TAG, "Nudge response: $trimmed")
+            
+            if (upper.startsWith("CLICK")) {
+                // Cursor is on target — click!
+                withContext(Dispatchers.Main) {
+                    appendToLog("✅ On target, clicking!")
+                    mouseClick()
+                    lastClickTimeMs = System.currentTimeMillis()
+                    appendToLog("⏳ Waiting for response...")
+                }
+                return
+            } else if (upper.startsWith("NUDGE:")) {
+                // Parse relative movement: NUDGE:dx,dy
+                val parts = trimmed.substring(6).split(",")
+                if (parts.size == 2) {
+                    val dx = parts[0].trim().toIntOrNull() ?: 0
+                    val dy = parts[1].trim().toIntOrNull() ?: 0
+                    withContext(Dispatchers.Main) {
+                        appendToLog("🔧 Nudging ($dx, $dy)")
+                        moveMouse(dx, dy)
+                    }
+                    mouseX += dx
+                    mouseY += dy
+                    delay(200) // Let cursor settle
+                    continue
+                }
+                // Couldn't parse, try again
+                withContext(Dispatchers.Main) {
+                    appendToLog("⚠️ Bad nudge format: $trimmed")
+                }
+            } else if (upper.startsWith("ABORT")) {
+                // Target not visible on screen
+                withContext(Dispatchers.Main) {
+                    appendToLog("❌ Target not found: $targetDescription")
+                }
+                return
+            } else {
+                withContext(Dispatchers.Main) {
+                    appendToLog("⚠️ Unexpected: $trimmed")
+                }
+            }
+        }
+        
+        // Max nudges reached
+        withContext(Dispatchers.Main) {
+            appendToLog("⚠️ Max nudge attempts for: $targetDescription")
+        }
+    }
+    
+    private fun callNudgeAI(base64Image: String, targetDescription: String, attempt: Int): String {
+        val prompt = """Look at this screen photo. Find the mouse cursor and the target element.
+            |
+            |TARGET: $targetDescription
+            |ATTEMPT: $attempt (I will nudge the cursor in small steps until it's on the target)
+            |
+            |Instructions:
+            |1. Find where the mouse cursor currently is on screen
+            |2. Find where the target element is
+            |3. Estimate the RELATIVE pixel distance to move the cursor to the target
+            |
+            |Respond with ONLY one of:
+            |- CLICK (cursor is on or very close to the target — click now)
+            |- NUDGE:dx,dy (move cursor by this relative amount, e.g., NUDGE:-50,30 means left 50, down 30)
+            |- ABORT (target is not visible on screen at all)
+            |
+            |Keep nudges moderate (10-200 pixels). Negative X = left, positive X = right. Negative Y = up, positive Y = down.
+            |One line only.""".trimMargin()
+        
+        val json = JSONObject().apply {
+            put("model", "claude-sonnet-4-20250514")
+            put("max_tokens", 50)
+            put("messages", JSONArray().apply {
+                put(JSONObject().apply {
+                    put("role", "user")
+                    put("content", JSONArray().apply {
+                        put(JSONObject().apply {
+                            put("type", "image")
+                            put("source", JSONObject().apply {
+                                put("type", "base64")
+                                put("media_type", "image/jpeg")
+                                put("data", base64Image)
+                            })
+                        })
+                        put(JSONObject().apply {
+                            put("type", "text")
+                            put("text", prompt)
+                        })
+                    })
+                })
+            })
+        }
+        
+        val request = buildApiRequest(json.toString())
+        val response = client.newCall(request).execute()
+        val responseBody = response.body?.string() ?: throw Exception("Empty response")
+        
+        if (!response.isSuccessful) {
+            throw Exception("API error: $responseBody")
+        }
+        
+        val responseJson = JSONObject(responseBody)
+        val content = responseJson.getJSONArray("content")
+        return content.getJSONObject(0).getString("text")
+    }
+    
     private fun executeAction(action: String) {
         val upper = action.uppercase()
         when {
@@ -985,31 +1188,19 @@ class MainActivity : AppCompatActivity() {
                 Log.d(TAG, "Sending KEY via HID: $key")
                 sendKey(key)
             }
-            upper.startsWith("CLICK:") -> {
-                // Format: CLICK:x,y
-                val coords = action.substring(6).split(",")
-                if (coords.size == 2) {
-                    val targetX = coords[0].trim().toIntOrNull() ?: return
-                    val targetY = coords[1].trim().toIntOrNull() ?: return
-                    Log.d(TAG, "CLICK at ($targetX, $targetY), current mouse at ($mouseX, $mouseY)")
-                    appendToLog("🖱️ Click ($targetX, $targetY)")
-                    
-                    // Calculate relative movement
-                    val deltaX = targetX - mouseX
-                    val deltaY = targetY - mouseY
-                    
-                    // Move to position with settle time
-                    moveMouse(deltaX, deltaY)
-                    Thread.sleep(150)  // Let cursor settle
-                    
-                    // Robust click
-                    mouseClick()
-                    
-                    // Update estimated position
-                    mouseX = targetX
-                    mouseY = targetY
-                    
-                    appendToLog("⏳ Waiting 10s for response...")
+            upper.startsWith("CLICKTARGET:") || upper.startsWith("CLICK:") -> {
+                // Visual nudge-to-target loop
+                val description = if (upper.startsWith("CLICKTARGET:")) {
+                    action.substring(12)
+                } else {
+                    // Legacy CLICK:x,y — treat coords as hint, still use visual loop
+                    action.substring(6)
+                }
+                Log.d(TAG, "CLICKTARGET: $description")
+                appendToLog("🎯 Targeting: $description")
+                
+                scope.launch {
+                    visualNudgeAndClick(description)
                 }
             }
             upper.startsWith("MOVE:") -> {

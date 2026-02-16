@@ -4,7 +4,6 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="24dp"
     android:background="@color/gofun"
     android:keepScreenOn="true">
 
@@ -14,7 +13,8 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:layout_marginBottom="24dp">
+        android:padding="24dp"
+        android:paddingBottom="16dp">
 
         <!-- Vertical kanji accent -->
         <TextView
@@ -45,152 +45,193 @@
             app:tint="@color/hai" />
     </LinearLayout>
 
-    <!-- Task Card -->
-    <androidx.cardview.widget.CardView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
-        app:cardCornerRadius="4dp"
-        app:cardElevation="1dp"
-        app:cardBackgroundColor="@color/gofun_dark">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="20dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Task"
-                style="@style/Kantoku.Heading.Small"
-                android:layout_marginBottom="12dp" />
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Describe what should be done..."
-                app:boxStrokeColor="@color/indigo"
-                app:hintTextColor="@color/hai"
-                app:boxCornerRadiusTopStart="4dp"
-                app:boxCornerRadiusTopEnd="4dp"
-                app:boxCornerRadiusBottomStart="4dp"
-                app:boxCornerRadiusBottomEnd="4dp"
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/etTask"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:minLines="3"
-                    android:gravity="top"
-                    android:inputType="textMultiLine"
-                    android:fontFamily="sans-serif-light"
-                    android:textColor="@color/sumi"
-                    android:lineSpacingMultiplier="1.3" />
-
-            </com.google.android.material.textfield.TextInputLayout>
-
-        </LinearLayout>
-    </androidx.cardview.widget.CardView>
-
-    <!-- Duration Card -->
-    <androidx.cardview.widget.CardView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
-        app:cardCornerRadius="4dp"
-        app:cardElevation="1dp"
-        app:cardBackgroundColor="@color/gofun_dark">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="20dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Duration"
-                style="@style/Kantoku.Heading.Small"
-                android:layout_marginBottom="12dp" />
-
-            <Spinner
-                android:id="@+id/spDuration"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:background="@drawable/spinner_background"
-                android:padding="12dp"
-                android:popupBackground="@color/gofun" />
-
-        </LinearLayout>
-    </androidx.cardview.widget.CardView>
-
-    <!-- Skill Card -->
-    <androidx.cardview.widget.CardView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
-        app:cardCornerRadius="4dp"
-        app:cardElevation="1dp"
-        app:cardBackgroundColor="@color/gofun_dark">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="20dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Skill"
-                style="@style/Kantoku.Heading.Small"
-                android:layout_marginBottom="4dp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="App-specific instructions for better results"
-                style="@style/Kantoku.Body.Secondary"
-                android:layout_marginBottom="12dp" />
-
-            <Spinner
-                android:id="@+id/spSkill"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:background="@drawable/spinner_background"
-                android:padding="12dp"
-                android:popupBackground="@color/gofun" />
-
-        </LinearLayout>
-    </androidx.cardview.widget.CardView>
-
-    <!-- Spacer -->
-    <View
+    <!-- Scrollable content -->
+    <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_weight="1"
+        android:fillViewport="true">
 
-    <!-- Bluetooth Status -->
-    <TextView
-        android:id="@+id/tvBluetoothStatus"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Not connected"
-        android:textSize="14sp"
-        android:fontFamily="sans-serif-light"
-        android:textColor="@color/hai"
-        android:gravity="center"
-        android:layout_marginBottom="16dp" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp">
 
-    <!-- Buttons -->
+            <!-- Task Card -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="4dp"
+                app:cardElevation="1dp"
+                app:cardBackgroundColor="@color/gofun_dark">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Task"
+                        style="@style/Kantoku.Heading.Small"
+                        android:layout_marginBottom="12dp" />
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Describe what should be done..."
+                        app:boxStrokeColor="@color/indigo"
+                        app:hintTextColor="@color/hai"
+                        app:boxCornerRadiusTopStart="4dp"
+                        app:boxCornerRadiusTopEnd="4dp"
+                        app:boxCornerRadiusBottomStart="4dp"
+                        app:boxCornerRadiusBottomEnd="4dp"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/etTask"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:minLines="3"
+                            android:gravity="top"
+                            android:inputType="textMultiLine"
+                            android:fontFamily="sans-serif-light"
+                            android:textColor="@color/sumi"
+                            android:lineSpacingMultiplier="1.3" />
+
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Connection Status Card (clickable) -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/cardConnectionStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:foreground="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                app:cardCornerRadius="4dp"
+                app:cardElevation="1dp"
+                app:cardBackgroundColor="@color/gofun_dark">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="16dp"
+                    android:gravity="center_vertical">
+
+                    <View
+                        android:id="@+id/statusIndicator"
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:background="@drawable/status_dot"
+                        android:layout_marginEnd="12dp" />
+
+                    <TextView
+                        android:id="@+id/tvBluetoothStatus"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Not connected"
+                        android:textSize="14sp"
+                        android:fontFamily="sans-serif-light"
+                        android:textColor="@color/sumi" />
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Duration Card -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="4dp"
+                app:cardElevation="1dp"
+                app:cardBackgroundColor="@color/gofun_dark">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Duration"
+                        style="@style/Kantoku.Heading.Small"
+                        android:layout_marginBottom="12dp" />
+
+                    <Spinner
+                        android:id="@+id/spDuration"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:background="@drawable/spinner_background"
+                        android:padding="12dp"
+                        android:popupBackground="@color/gofun" />
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Skill Card -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="4dp"
+                app:cardElevation="1dp"
+                app:cardBackgroundColor="@color/gofun_dark">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Skill"
+                        style="@style/Kantoku.Heading.Small"
+                        android:layout_marginBottom="4dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="App-specific instructions for better results"
+                        style="@style/Kantoku.Body.Secondary"
+                        android:layout_marginBottom="12dp" />
+
+                    <Spinner
+                        android:id="@+id/spSkill"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:background="@drawable/spinner_background"
+                        android:padding="12dp"
+                        android:popupBackground="@color/gofun" />
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- Buttons (fixed at bottom) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        android:padding="24dp"
+        android:paddingTop="16dp">
 
         <Button
             android:id="@+id/btnConnect"

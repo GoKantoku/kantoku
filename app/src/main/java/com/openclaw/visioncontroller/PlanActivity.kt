@@ -52,6 +52,8 @@ class PlanActivity : AppCompatActivity() {
     private lateinit var spDuration: Spinner
     private lateinit var spSkill: Spinner
     private lateinit var tvBluetoothStatus: TextView
+    private lateinit var statusIndicator: View
+    private lateinit var cardConnectionStatus: androidx.cardview.widget.CardView
     private lateinit var btnConnect: Button
     private lateinit var btnStart: Button
     private lateinit var btnSettings: android.widget.ImageButton
@@ -70,6 +72,8 @@ class PlanActivity : AppCompatActivity() {
         spDuration = findViewById(R.id.spDuration)
         spSkill = findViewById(R.id.spSkill)
         tvBluetoothStatus = findViewById(R.id.tvBluetoothStatus)
+        statusIndicator = findViewById(R.id.statusIndicator)
+        cardConnectionStatus = findViewById(R.id.cardConnectionStatus)
         btnConnect = findViewById(R.id.btnConnect)
         btnStart = findViewById(R.id.btnStart)
         btnSettings = findViewById(R.id.btnSettings)
@@ -90,6 +94,11 @@ class PlanActivity : AppCompatActivity() {
 
     private fun setupUI() {
         btnConnect.setOnClickListener {
+            showDevicePicker()
+        }
+
+        // Also allow tapping the status card to pick device
+        cardConnectionStatus.setOnClickListener {
             showDevicePicker()
         }
 
@@ -168,12 +177,15 @@ class PlanActivity : AppCompatActivity() {
         }
         
         selectedDeviceAddress = device.address
-        updateBluetoothStatus("✅ Selected: ${device.name}")
+        updateBluetoothStatus("Selected: ${device.name}", isConnected = true)
         btnConnect.text = "Selected"
     }
 
-    private fun updateBluetoothStatus(status: String) {
+    private fun updateBluetoothStatus(status: String, isConnected: Boolean = false) {
         tvBluetoothStatus.text = status
+        statusIndicator.setBackgroundResource(
+            if (isConnected) R.drawable.status_dot_connected else R.drawable.status_dot
+        )
     }
 
     private fun startExecution() {
