@@ -67,6 +67,9 @@ class MainActivity : AppCompatActivity() {
     private var iterationsSinceSubtaskCheck = 0
     private val checkSubtaskEveryN = 5  // Check if subtask is done every 5 iterations
     
+    // Track completed subtasks with how they were done
+    private val completedSubtasks = mutableListOf<Pair<String, String>>() // (subtask, how completed)
+    
     // Action log for display
     private val actionLog = StringBuilder()
     
@@ -864,15 +867,34 @@ class MainActivity : AppCompatActivity() {
     
     private fun callVisionAI(base64Image: String, isRecoveryMode: Boolean): String {
         val recentActions = actionHistory.takeLast(15).joinToString("\n")
-        val subtaskInfo = if (subtasks.size > 1) {
-            "\n|PROGRESS: ${getSubtaskProgress()}\n|OVERALL GOAL: $currentTask"
+        
+        // Build full plan view
+        val planView = if (subtasks.size > 1) {
+            val planLines = subtasks.mapIndexed { i, task ->
+                val status = when {
+                    i < currentSubtaskIndex -> "✅"
+                    i == currentSubtaskIndex -> "👉"
+                    else -> "⬜"
+                }
+                "$status ${i+1}. $task"
+            }.joinToString("\n|")
+            "\n|FULL PLAN:\n|$planLines\n|OVERALL GOAL: $currentTask"
         } else ""
+        
+        // Build completed subtask context
+        val completedContext = if (completedSubtasks.isNotEmpty()) {
+            val lines = completedSubtasks.joinToString("\n|") { (name, how) ->
+                "- $name → Done via: $how"
+            }
+            "\n|COMPLETED SO FAR:\n|$lines"
+        } else ""
+        
         val currentSubtask = getCurrentSubtask()
         
         val prompt = if (isRecoveryMode) {
             """You are controlling a computer via keyboard and mouse. You seem stuck.
             |
-            |CURRENT SUBTASK: $currentSubtask$subtaskInfo
+            |CURRENT SUBTASK: $currentSubtask$planView$completedContext
             |
             |RECENT ACTIONS (may not have worked):
             |$recentActions
@@ -900,7 +922,7 @@ class MainActivity : AppCompatActivity() {
         } else {
             """You are controlling a computer via keyboard and mouse to complete a task.
             |
-            |CURRENT SUBTASK: $currentSubtask$subtaskInfo
+            |CURRENT SUBTASK: $currentSubtask$planView$completedContext
             |
             |RECENT ACTIONS:
             |${if (recentActions.isEmpty()) "None yet" else recentActions}
@@ -1035,7 +1057,13 @@ class MainActivity : AppCompatActivity() {
         } else if (action.uppercase() == "SUBTASK_DONE") {
             Log.d(TAG, "Subtask marked as DONE")
             pendingActions.clear() // Clear any remaining queued actions
+            
+            // Save completion summary before clearing history
+            val completedName = getCurrentSubtask()
+            val summary = actionHistory.takeLast(10).joinToString(", ")
+            completedSubtasks.add(Pair(completedName, summary))
             actionHistory.clear() // Clear history for fresh start
+            
             if (currentSubtaskIndex < subtasks.size - 1) {
                 currentSubtaskIndex++
                 appendToLog("✅ Subtask complete! Moving to: ${getCurrentSubtask()}")
