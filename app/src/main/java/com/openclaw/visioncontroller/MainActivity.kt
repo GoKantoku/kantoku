@@ -904,6 +904,7 @@ class MainActivity : AppCompatActivity() {
             |- KEY:cmd+w (close unrelated windows)
             |
             |Try a DIFFERENT approach than what you already tried.
+            |⚠️ To open apps: USE SPOTLIGHT (KEY:cmd+space, then TYPE:appname, then KEY:enter). Do NOT click dock icons.
             |
             |Respond with 5-10 commands, one per line:
             |- TYPE:text (type text into focused field)
@@ -917,7 +918,9 @@ class MainActivity : AppCompatActivity() {
             |
             |Example plan:
             |KEY:escape
-            |CLICKTARGET:Safari icon in dock
+            |KEY:cmd+space
+            |TYPE:Safari
+            |KEY:enter
             |WAIT""".trimMargin()
         } else {
             """You are controlling a computer via keyboard and mouse to complete a task.
@@ -931,8 +934,10 @@ class MainActivity : AppCompatActivity() {
             |
             |Then plan the NEXT 5-10 STEPS to make progress on the task.
             |
-            |⚠️ BEFORE TYPING: Is the correct app visible and the right field focused?
+            |⚠️ IMPORTANT TIPS:
+            |- To open apps: USE SPOTLIGHT (KEY:cmd+space, then TYPE:appname, then KEY:enter). This is MORE RELIABLE than clicking dock icons.
             |- NEVER type unless you can SEE the focused input field
+            |- Clicking dock icons is unreliable — prefer keyboard shortcuts
             |
             |Respond with multiple commands, one per line:
             |- TYPE:text (type text into focused field)
@@ -942,8 +947,10 @@ class MainActivity : AppCompatActivity() {
             |- SUBTASK_DONE (if current subtask is complete, move to next)
             |- DONE (if ALL tasks are complete)
             |
-            |Example plan:
-            |CLICKTARGET:Safari icon in dock
+            |Example plan to open a browser and search:
+            |KEY:cmd+space
+            |TYPE:Google Chrome
+            |KEY:enter
             |WAIT
             |CLICKTARGET:address bar
             |TYPE:google.com
