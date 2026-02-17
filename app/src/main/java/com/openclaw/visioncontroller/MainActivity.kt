@@ -1159,6 +1159,18 @@ class MainActivity : AppCompatActivity() {
     }
     
     private suspend fun visualNudgeAndClick(targetDescription: String, maxNudges: Int = 6) {
+        // Reset cursor to center of screen before targeting
+        val resetDx = 720 - mouseX
+        val resetDy = 450 - mouseY
+        if (Math.abs(resetDx) > 10 || Math.abs(resetDy) > 10) {
+            withContext(Dispatchers.Main) {
+                moveMouse(resetDx, resetDy)
+            }
+            mouseX = 720
+            mouseY = 450
+            delay(200)
+        }
+        
         for (attempt in 1..maxNudges) {
             // Capture current view
             val bitmap = withContext(Dispatchers.Main) { binding.viewFinder.bitmap }
@@ -1262,6 +1274,7 @@ class MainActivity : AppCompatActivity() {
         val prompt = """Look at this screen photo. Find the mouse cursor and the target element.
             |
             |TARGET: $targetDescription
+            |ESTIMATED CURSOR POSITION: approximately ($mouseX, $mouseY) on a ~1440x900 screen
             |ATTEMPT: $attempt (I will nudge the cursor in small steps until it's on the target)
             |
             |Instructions:
