@@ -448,7 +448,7 @@ class MainActivity : AppCompatActivity() {
             // First, plan subtasks
             appendToLog("📋 Planning subtasks...")
             try {
-                val planned = planSubtasks(currentTask)
+                val planned = withContext(Dispatchers.IO) { planSubtasks(currentTask) }
                 subtasks.addAll(planned)
                 appendToLog("📋 ${subtasks.size} subtasks planned:")
                 subtasks.forEachIndexed { i, task -> 
@@ -1218,8 +1218,36 @@ class MainActivity : AppCompatActivity() {
                 }
                 return
             } else {
-                withContext(Dispatchers.Main) {
-                    appendToLog("⚠️ Unexpected: $trimmed")
+                // Fallback: try to extract action from verbose response
+                val nudgeMatch = Regex("NUDGE:\\s*(-?\\d+)\\s*,\\s*(-?\\d+)", RegexOption.IGNORE_CASE).find(upper)
+                if (upper.contains("CLICK") && !upper.contains("NUDGE")) {
+                    withContext(Dispatchers.Main) {
+                        appendToLog("✅ On target (extracted), clicking!")
+                        mouseClick()
+                        lastClickTimeMs = System.currentTimeMillis()
+                        appendToLog("⏳ Waiting for response...")
+                    }
+                    return
+                } else if (nudgeMatch != null) {
+                    val dx = nudgeMatch.groupValues[1].toIntOrNull() ?: 0
+                    val dy = nudgeMatch.groupValues[2].toIntOrNull() ?: 0
+                    withContext(Dispatchers.Main) {
+                        appendToLog("🔧 Nudging (extracted) ($dx, $dy)")
+                        moveMouse(dx, dy)
+                    }
+                    mouseX += dx
+                    mouseY += dy
+                    delay(200)
+                    continue
+                } else if (upper.contains("ABORT")) {
+                    withContext(Dispatchers.Main) {
+                        appendToLog("❌ Target not found (extracted): $targetDescription")
+                    }
+                    return
+                } else {
+                    withContext(Dispatchers.Main) {
+                        appendToLog("⚠️ Unexpected: ${trimmed.take(100)}")
+                    }
                 }
             }
         }
@@ -1241,13 +1269,17 @@ class MainActivity : AppCompatActivity() {
             |2. Find where the target element is
             |3. Estimate the RELATIVE pixel distance to move the cursor to the target
             |
-            |Respond with ONLY one of:
-            |- CLICK (cursor is on or very close to the target — click now)
-            |- NUDGE:dx,dy (move cursor by this relative amount, e.g., NUDGE:-50,30 means left 50, down 30)
-            |- ABORT (target is not visible on screen at all)
+            |RESPOND WITH EXACTLY ONE LINE. No explanation. No thinking. No description.
+            |Valid responses (pick one):
+            |CLICK
+            |NUDGE:dx,dy
+            |ABORT
             |
-            |Keep nudges moderate (10-200 pixels). Negative X = left, positive X = right. Negative Y = up, positive Y = down.
-            |One line only.""".trimMargin()
+            |CLICK = cursor is on or very close to target, click now
+            |NUDGE:dx,dy = move cursor by relative pixels (e.g. NUDGE:-50,30 = left 50 down 30). Keep 10-200px.
+            |ABORT = target not visible on screen
+            |
+            |YOUR RESPONSE MUST START WITH CLICK, NUDGE:, OR ABORT. Nothing else.""".trimMargin()
         
         val json = JSONObject().apply {
             put("model", "claude-sonnet-4-20250514")
