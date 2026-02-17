@@ -114,15 +114,7 @@ class MainActivity : AppCompatActivity() {
     private var isIdleMode = false
     private var lastIdleActionMs = 0L
     private var idleActionCount = 0
-    private val idleIntervalMs = 60_000L           // 60 seconds between simple actions
-    private val idleBrowseIntervalMs = 5 * 60_000L // 5 minutes between vision-guided browsing
-    private var idleModePreference = SetupActivity.IDLE_RANDOM
-    
-    // Idle mode URL options
-    private val idleUrlWikipedia = "https://en.wikipedia.org/wiki/Special:Random"
-    private val idleUrlGoogleMaps = "https://www.google.com/maps/@0,0,3z"
-    private val idleUrlNpr = "https://www.npr.org"
-    private val allIdleUrls = listOf(idleUrlWikipedia, idleUrlGoogleMaps, idleUrlNpr)
+    private val idleIntervalMs = 60_000L           // 60 seconds between vision checks
     
     companion object {
         private const val TAG = "Kantoku"  // Easy to grep
@@ -217,8 +209,6 @@ class MainActivity : AppCompatActivity() {
         
         // Load API key and preferences
         apiKey = SetupActivity.getApiKey(this)
-        idleModePreference = SetupActivity.getIdleMode(this)
-        
         val bluetoothManager = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
         bluetoothAdapter = bluetoothManager.adapter
         
@@ -540,27 +530,17 @@ class MainActivity : AppCompatActivity() {
             Log.d(TAG, "Idle mode started")
             
             while (isRunning && isIdleMode) {
-                val now = System.currentTimeMillis()
-                val timeSinceLastAction = now - lastIdleActionMs
-                
-                // Every 5 minutes: vision-guided browsing
-                if (idleActionCount > 0 && idleActionCount % 5 == 0) {
-                    Log.d(TAG, "Idle: Vision-guided browsing")
-                    appendToLog("🔍 Exploring...")
-                    idleBrowseWithVision()
-                } else {
-                    // Simple keep-alive action
-                    Log.d(TAG, "Idle: Simple keep-alive action")
-                    performIdleAction()
-                }
-                
-                lastIdleActionMs = System.currentTimeMillis()
                 idleActionCount++
                 
                 runOnUiThread {
                     binding.tvLastAction.text = "Idle mode • Action #$idleActionCount"
                     updateStatus("🌙 Idle mode active")
                 }
+                
+                // Every action is vision-driven
+                idleVisionAction()
+                
+                lastIdleActionMs = System.currentTimeMillis()
                 
                 // Wait 60 seconds before next action
                 delay(idleIntervalMs)
@@ -570,142 +550,78 @@ class MainActivity : AppCompatActivity() {
         }
     }
     
-    private fun performIdleAction() {
-        // Simple actions that don't need vision API
-        val action = when ((0..4).random()) {
-            0 -> {
-                // Mouse wiggle
-                appendToLog("🖱️ Mouse wiggle")
-                val dx = (-20..20).random()
-                val dy = (-20..20).random()
-                moveMouse(dx, dy)
-                Thread.sleep(200)
-                moveMouse(-dx, -dy)  // Return to original position
+    private suspend fun idleVisionAction() {
+        try {
+            val bitmap = withContext(Dispatchers.Main) { binding.viewFinder.bitmap }
+            if (bitmap == null) {
+                Log.e(TAG, "Idle vision: bitmap is NULL")
+                appendToLog("💤 Waiting (no camera)...")
+                return
             }
-            1 -> {
-                // Mouse wiggle (safer than scroll which can affect wrong app)
-                appendToLog("🖱️ Mouse wiggle")
-                val dx2 = (-15..15).random()
-                val dy2 = (-15..15).random()
-                moveMouse(dx2, dy2)
-                Thread.sleep(200)
-                moveMouse(-dx2, -dy2)
+            
+            val outputStream = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
+            val base64Image = Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
+            
+            val response = withContext(Dispatchers.IO) {
+                callIdleVisionAI(base64Image)
             }
-            2 -> {
-                // Small mouse movement
-                appendToLog("🖱️ Mouse drift")
-                val dx = (-30..30).random()
-                val dy = (-30..30).random()
-                moveMouse(dx, dy)
-                mouseX += dx
-                mouseY += dy
-            }
-            3 -> {
-                // Mouse wiggle variant
-                appendToLog("🖱️ Mouse nudge")
-                val dx3 = (-10..10).random()
-                val dy3 = (-10..10).random()
-                moveMouse(dx3, dy3)
-                Thread.sleep(150)
-                moveMouse(-dx3, -dy3)
-            }
-            else -> {
-                // Just wait (do nothing visible)
-                appendToLog("💤 Waiting...")
-            }
-        }
-    }
-    
-    private suspend fun idleBrowseWithVision() {
-        // Select URL based on preference
-        val url = when (idleModePreference) {
-            SetupActivity.IDLE_WIKIPEDIA -> idleUrlWikipedia
-            SetupActivity.IDLE_GOOGLE_MAPS -> idleUrlGoogleMaps
-            SetupActivity.IDLE_NPR -> idleUrlNpr
-            else -> allIdleUrls.random()  // IDLE_RANDOM
-        }
-        appendToLog("🌐 Opening $url")
-        
-        // First ensure a browser is focused (not TextEdit or another app)
-        // Use Spotlight to open Safari, which handles new tabs properly
-        withContext(Dispatchers.Main) {
-            sendKey("cmd+space")
-        }
-        delay(500)
-        withContext(Dispatchers.Main) {
-            sendText("Safari")
-        }
-        delay(300)
-        withContext(Dispatchers.Main) {
-            sendKey("enter")
-        }
-        delay(1000)
-        
-        // Now open new tab and navigate
-        withContext(Dispatchers.Main) {
-            sendKey("cmd+t")
-        }
-        delay(500)
-        withContext(Dispatchers.Main) {
-            sendText(url)
-        }
-        delay(200)
-        withContext(Dispatchers.Main) {
-            sendKey("enter")
-        }
-        
-        // Wait for page to load
-        delay(3000)
-        
-        // Now use vision to explore the page
-        withContext(Dispatchers.IO) {
-            try {
-                val bitmap = withContext(Dispatchers.Main) { binding.viewFinder.bitmap }
-                if (bitmap != null) {
-                    val outputStream = ByteArrayOutputStream()
-                    bitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
-                    val base64Image = Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
-                    
-                    val response = callIdleVisionAI(base64Image)
-                    val actions = parseAllActions(response)
-                    
-                    // Execute just a few casual actions
-                    for (action in actions.take(3)) {
-                        withContext(Dispatchers.Main) {
-                            appendToLog("→ $action")
-                            executeAction(action)
-                        }
-                        delay(2000)
-                    }
+            
+            val actions = parseAllActions(response)
+            
+            // Execute 1-2 actions max per cycle
+            for (action in actions.take(2)) {
+                withContext(Dispatchers.Main) {
+                    appendToLog("→ $action")
+                    executeAction(action)
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "Idle browse failed: ${e.message}")
-                appendToLog("⚠️ Browse error: ${e.message}")
+                delay(1000)
+            }
+            
+            if (actions.isEmpty()) {
+                appendToLog("💤 Nothing to do")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Idle vision failed: ${e.message}")
+            appendToLog("⚠️ Idle error: ${e.message}")
+            // Fallback: small mouse wiggle to prevent sleep
+            withContext(Dispatchers.Main) {
+                val dx = (-15..15).random()
+                val dy = (-15..15).random()
+                moveMouse(dx, dy)
+                Thread.sleep(200)
+                moveMouse(-dx, -dy)
             }
         }
     }
     
     private fun callIdleVisionAI(base64Image: String): String {
-        val prompt = """You are casually browsing the web to keep a computer active.
+        val recentIdleActions = actionHistory.takeLast(10).joinToString("\n")
+        
+        val prompt = """You are monitoring a computer screen during idle time. Look at the screen and decide what to do.
             |
-            |⚠️ FIRST: If you see any popups, dismiss them:
-            |- Cookie banners → click "Accept" or "OK" or X
-            |- Newsletter popups → click "No thanks" or X
-            |- Any overlay/modal → close it
+            |PRIORITIES (in order):
+            |1. NOTIFICATIONS: Look for any notification banners, badges, or alerts (new emails, messages, calendar reminders, system alerts). If you see any, report what you see and interact with them.
+            |2. POPUPS/DIALOGS: Dismiss any popups, cookie banners, or dialogs that appeared.
+            |3. KEEP ALIVE: If nothing notable, do a small mouse movement to prevent the screen from sleeping.
             |
-            |Then do something interesting but harmless:
-            |- Scroll around to read content
-            |- Click an interesting link
-            |- Explore the page naturally
+            |RECENT ACTIONS:
+            |${if (recentIdleActions.isEmpty()) "None yet" else recentIdleActions}
             |
-            |Respond with 2-3 simple commands:
-            |- KEY:pagedown / KEY:pageup (scroll)
-            |- KEY:escape (dismiss dialogs)
-            |- CLICK:x,y (click something interesting or close a popup)
-            |- MOVE:dx,dy (move mouse around)
-            |- WAIT (pause to "read")
+            |Respond with 1-2 commands max:
+            |- MOVE:dx,dy (small mouse movement to keep alive, e.g. MOVE:5,0)
+            |- KEY:keyname (press a key, e.g. KEY:escape to dismiss a dialog)
+            |- CLICKTARGET:description (click something specific, e.g. a notification)
+            |- CLICK:x,y (click at coordinates)
+            |- TYPE:text (only if a text field is focused)
+            |- WAIT (do nothing this cycle)
+            |- NOTIFY:message (report something notable you see — a notification, alert, or status change)
             |
-            |Be casual and curious, like a human browsing.""".trimMargin()
+            |⚠️ DO NOT open apps, browse websites, or type unless responding to something on screen.
+            |⚠️ DO NOT use keyboard shortcuts like cmd+space, cmd+t, etc.
+            |⚠️ Keep actions minimal. You will be called again in 60 seconds.
+            |
+            |If you see a notification or alert, use NOTIFY: to report it, then interact with it if appropriate.""".trimMargin()
         
         val json = JSONObject().apply {
             put("model", "claude-sonnet-4-20250514")
@@ -1049,6 +965,7 @@ class MainActivity : AppCompatActivity() {
                 upper.startsWith("CLICKTARGET:") ||
                 upper.startsWith("CLICK:") ||
                 upper.startsWith("MOVE:") ||
+                upper.startsWith("NOTIFY:") ||
                 upper == "LEFTCLICK" ||
                 upper == "RIGHTCLICK" ||
                 upper == "DOUBLECLICK" ||
@@ -1387,6 +1304,11 @@ class MainActivity : AppCompatActivity() {
                     mouseX += dx
                     mouseY += dy
                 }
+            }
+            upper.startsWith("NOTIFY:") -> {
+                val message = action.substring(7).trim()
+                Log.d(TAG, "NOTIFY: $message")
+                appendToLog("🔔 $message")
             }
             upper == "LEFTCLICK" -> {
                 Log.d(TAG, "Left click at current position")
