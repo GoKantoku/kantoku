@@ -583,11 +583,13 @@ class MainActivity : AppCompatActivity() {
                 moveMouse(-dx, -dy)  // Return to original position
             }
             1 -> {
-                // Scroll down then up
-                appendToLog("📜 Scroll")
-                sendKey("pagedown")
-                Thread.sleep(500)
-                sendKey("pageup")
+                // Mouse wiggle (safer than scroll which can affect wrong app)
+                appendToLog("🖱️ Mouse wiggle")
+                val dx2 = (-15..15).random()
+                val dy2 = (-15..15).random()
+                moveMouse(dx2, dy2)
+                Thread.sleep(200)
+                moveMouse(-dx2, -dy2)
             }
             2 -> {
                 // Small mouse movement
@@ -599,11 +601,13 @@ class MainActivity : AppCompatActivity() {
                 mouseY += dy
             }
             3 -> {
-                // Press and release shift (harmless)
-                appendToLog("⌨️ Key tap")
-                sendKeyReport(0x02, 0)  // Shift down
-                Thread.sleep(50)
-                sendKeyReport(0, 0)     // Release
+                // Mouse wiggle variant
+                appendToLog("🖱️ Mouse nudge")
+                val dx3 = (-10..10).random()
+                val dy3 = (-10..10).random()
+                moveMouse(dx3, dy3)
+                Thread.sleep(150)
+                moveMouse(-dx3, -dy3)
             }
             else -> {
                 // Just wait (do nothing visible)
@@ -622,7 +626,22 @@ class MainActivity : AppCompatActivity() {
         }
         appendToLog("🌐 Opening $url")
         
-        // Open new tab and navigate
+        // First ensure a browser is focused (not TextEdit or another app)
+        // Use Spotlight to open Safari, which handles new tabs properly
+        withContext(Dispatchers.Main) {
+            sendKey("cmd+space")
+        }
+        delay(500)
+        withContext(Dispatchers.Main) {
+            sendText("Safari")
+        }
+        delay(300)
+        withContext(Dispatchers.Main) {
+            sendKey("enter")
+        }
+        delay(1000)
+        
+        // Now open new tab and navigate
         withContext(Dispatchers.Main) {
             sendKey("cmd+t")
         }
