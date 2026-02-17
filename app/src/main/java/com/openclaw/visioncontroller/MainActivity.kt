@@ -1058,19 +1058,27 @@ class MainActivity : AppCompatActivity() {
             Log.d(TAG, "Subtask marked as DONE")
             pendingActions.clear() // Clear any remaining queued actions
             
-            // Save completion summary before clearing history
+            // Save completed subtask name, will summarize async
             val completedName = getCurrentSubtask()
-            val summary = actionHistory.takeLast(10).joinToString(", ")
-            completedSubtasks.add(Pair(completedName, summary))
-            actionHistory.clear() // Clear history for fresh start
+            appendToLog("📸 Summarizing what was done...")
             
-            if (currentSubtaskIndex < subtasks.size - 1) {
-                currentSubtaskIndex++
-                appendToLog("✅ Subtask complete! Moving to: ${getCurrentSubtask()}")
-                updateStatus("Working: ${getCurrentSubtask()}")
-            } else {
-                appendToLog("✅ All subtasks complete!")
-                isTaskComplete = true
+            // Launch summary coroutine
+            scope.launch {
+                val summary = summarizeSubtaskCompletion(completedName)
+                completedSubtasks.add(Pair(completedName, summary))
+                actionHistory.clear()
+                
+                withContext(Dispatchers.Main) {
+                    appendToLog("📝 $summary")
+                    if (currentSubtaskIndex < subtasks.size - 1) {
+                        currentSubtaskIndex++
+                        appendToLog("✅ Moving to: ${getCurrentSubtask()}")
+                        updateStatus("Working: ${getCurrentSubtask()}")
+                    } else {
+                        appendToLog("✅ All subtasks complete!")
+                        isTaskComplete = true
+                    }
+                }
             }
         } else if (action.uppercase() == "WAIT") {
             consecutiveWaits++
@@ -1092,6 +1100,63 @@ class MainActivity : AppCompatActivity() {
     // Estimated mouse position (assume screen is ~1440x900 ish, start at center)
     private var mouseX = 720
     private var mouseY = 450
+    
+    private suspend fun summarizeSubtaskCompletion(subtaskName: String): String {
+        try {
+            val bitmap = withContext(Dispatchers.Main) { binding.viewFinder.bitmap }
+            if (bitmap == null) return "Completed (no screenshot available)"
+            
+            val outputStream = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
+            val base64Image = Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
+            
+            val prompt = """I just finished this subtask: "$subtaskName"
+                |
+                |Look at the screen and describe in ONE short sentence:
+                |1. What was accomplished
+                |2. What is currently visible on screen
+                |
+                |Be specific and brief. One sentence only.""".trimMargin()
+            
+            val json = JSONObject().apply {
+                put("model", "claude-sonnet-4-20250514")
+                put("max_tokens", 100)
+                put("messages", JSONArray().apply {
+                    put(JSONObject().apply {
+                        put("role", "user")
+                        put("content", JSONArray().apply {
+                            put(JSONObject().apply {
+                                put("type", "image")
+                                put("source", JSONObject().apply {
+                                    put("type", "base64")
+                                    put("media_type", "image/jpeg")
+                                    put("data", base64Image)
+                                })
+                            })
+                            put(JSONObject().apply {
+                                put("type", "text")
+                                put("text", prompt)
+                            })
+                        })
+                    })
+                })
+            }
+            
+            val response = withContext(Dispatchers.IO) {
+                val request = buildApiRequest(json.toString())
+                val resp = client.newCall(request).execute()
+                val body = resp.body?.string() ?: throw Exception("Empty response")
+                if (!resp.isSuccessful) throw Exception("API error: $body")
+                val respJson = JSONObject(body)
+                respJson.getJSONArray("content").getJSONObject(0).getString("text")
+            }
+            
+            return response.trim()
+        } catch (e: Exception) {
+            Log.e(TAG, "Summary failed: ${e.message}")
+            return "Completed (summary unavailable)"
+        }
+    }
     
     private suspend fun visualNudgeAndClick(targetDescription: String, maxNudges: Int = 6) {
         for (attempt in 1..maxNudges) {
