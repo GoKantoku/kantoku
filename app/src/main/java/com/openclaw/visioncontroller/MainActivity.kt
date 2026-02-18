@@ -1120,7 +1120,34 @@ class MainActivity : AppCompatActivity() {
         }
     }
     
+    // Track repeated failed click targets for stuck detection
+    private var lastClickTarget = ""
+    private var clickTargetAttempts = 0
+    
     private suspend fun visualNudgeAndClick(targetDescription: String, maxNudges: Int = 6) {
+        // Stuck detection: if we've tried the same target 3+ times, try keyboard fallback
+        if (targetDescription.equals(lastClickTarget, ignoreCase = true)) {
+            clickTargetAttempts++
+            if (clickTargetAttempts >= 3) {
+                withContext(Dispatchers.Main) {
+                    appendToLog("🔄 Stuck on '$targetDescription' — trying keyboard fallback")
+                    // Try Tab to focus the button, then Enter to click it
+                    sendKey("tab")
+                }
+                delay(200)
+                withContext(Dispatchers.Main) {
+                    sendKey("enter")
+                }
+                delay(500)
+                clickTargetAttempts = 0
+                lastClickTarget = ""
+                return
+            }
+        } else {
+            lastClickTarget = targetDescription
+            clickTargetAttempts = 1
+        }
+        
         // Reset cursor to center of screen before targeting
         val resetDx = 720 - mouseX
         val resetDy = 450 - mouseY
@@ -1158,10 +1185,10 @@ class MainActivity : AppCompatActivity() {
             Log.d(TAG, "Nudge response: $trimmed")
             
             if (upper.startsWith("CLICK")) {
-                // Cursor is on target — click!
+                // Cursor is on target — click with retry for reliability
                 withContext(Dispatchers.Main) {
                     appendToLog("✅ On target, clicking!")
-                    mouseClick()
+                    mouseClickWithRetry()
                     lastClickTimeMs = System.currentTimeMillis()
                     appendToLog("⏳ Waiting for response...")
                 }
@@ -1197,7 +1224,7 @@ class MainActivity : AppCompatActivity() {
                 if (upper.contains("CLICK") && !upper.contains("NUDGE")) {
                     withContext(Dispatchers.Main) {
                         appendToLog("✅ On target (extracted), clicking!")
-                        mouseClick()
+                        mouseClickWithRetry()
                         lastClickTimeMs = System.currentTimeMillis()
                         appendToLog("⏳ Waiting for response...")
                     }
