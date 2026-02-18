@@ -924,7 +924,7 @@ class MainActivity : AppCompatActivity() {
             |Try a DIFFERENT approach than what you already tried.
             |⚠️ To open apps: USE SPOTLIGHT (KEY:cmd+space, then TYPE:appname, then KEY:enter). Do NOT click dock icons.
             |⚠️ If a popup won't dismiss, IGNORE IT. Use KEY:cmd+l to focus the address bar directly.
-            |⚠️ If a CLICK_FAILED is in recent actions, DO NOT try to navigate away or open a new app. The page is still there. Just skip that element and continue with the NEXT button/element on the current page.
+            |⚠️ If CLICK_FAILED is in recent actions: the page is STILL OPEN. DO NOT navigate, open Spotlight, or type URLs. Just mark SUBTASK_DONE and move to the next element.
             |
             |Respond with 5-10 commands, one per line:
             |- TYPE:text (type text into focused field)
@@ -959,7 +959,8 @@ class MainActivity : AppCompatActivity() {
             |- NEVER type unless you can SEE the focused input field
             |- Clicking dock icons is unreliable — prefer keyboard shortcuts
             |- POPUPS/DIALOGS (cookie consent, legal terms, sign-in prompts): NEVER use CLICKTARGET on popup buttons — mouse clicks on web dialogs are unreliable. Instead use KEY:tab to focus the button, then KEY:enter to press it. Or KEY:escape to dismiss. If a popup persists after 2 attempts, IGNORE IT and work around it (e.g. KEY:cmd+l to focus address bar directly).
-            |- If you see CLICK_FAILED in recent actions, DO NOT navigate away. The page is still open. Skip that element and click the NEXT one instead.
+            |- If you see CLICK_FAILED in recent actions: the page is STILL OPEN. DO NOT navigate, DO NOT open Spotlight, DO NOT type URLs. Just mark SUBTASK_DONE and move to the next element.
+            |- NEVER use KEY:cmd+tab, KEY:cmd+space, KEY:cmd+l, or TYPE a URL after a click failure. The page hasn't changed.
             |
             |Respond with multiple commands, one per line:
             |- TYPE:text (type text into focused field)
