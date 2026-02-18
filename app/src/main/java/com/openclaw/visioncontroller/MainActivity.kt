@@ -540,7 +540,17 @@ class MainActivity : AppCompatActivity() {
                         withContext(Dispatchers.Main) {
                             appendToLog("🎯 Targeting: $description")
                         }
-                        visualNudgeAndClick(description)
+                        val clickSucceeded = visualNudgeAndClick(description)
+                        if (!clickSucceeded) {
+                            // Click failed — clear remaining plan and force re-evaluation
+                            // This prevents the AI from continuing a stale plan
+                            pendingActions.clear()
+                            withContext(Dispatchers.Main) {
+                                appendToLog("🔄 Click failed, re-planning...")
+                            }
+                            // Add failure context to action history so the re-evaluation knows
+                            actionHistory.add("CLICK_FAILED:$description")
+                        }
                     } else {
                         withContext(Dispatchers.Main) {
                             processAction(nextAction)
@@ -914,6 +924,7 @@ class MainActivity : AppCompatActivity() {
             |Try a DIFFERENT approach than what you already tried.
             |⚠️ To open apps: USE SPOTLIGHT (KEY:cmd+space, then TYPE:appname, then KEY:enter). Do NOT click dock icons.
             |⚠️ If a popup won't dismiss, IGNORE IT. Use KEY:cmd+l to focus the address bar directly.
+            |⚠️ If a CLICK_FAILED is in recent actions, DO NOT try to navigate away or open a new app. The page is still there. Just skip that element and continue with the NEXT button/element on the current page.
             |
             |Respond with 5-10 commands, one per line:
             |- TYPE:text (type text into focused field)
@@ -948,6 +959,7 @@ class MainActivity : AppCompatActivity() {
             |- NEVER type unless you can SEE the focused input field
             |- Clicking dock icons is unreliable — prefer keyboard shortcuts
             |- POPUPS/DIALOGS (cookie consent, legal terms, sign-in prompts): NEVER use CLICKTARGET on popup buttons — mouse clicks on web dialogs are unreliable. Instead use KEY:tab to focus the button, then KEY:enter to press it. Or KEY:escape to dismiss. If a popup persists after 2 attempts, IGNORE IT and work around it (e.g. KEY:cmd+l to focus address bar directly).
+            |- If you see CLICK_FAILED in recent actions, DO NOT navigate away. The page is still open. Skip that element and click the NEXT one instead.
             |
             |Respond with multiple commands, one per line:
             |- TYPE:text (type text into focused field)
@@ -1200,7 +1212,8 @@ class MainActivity : AppCompatActivity() {
         lastClickTargetNormalized = ""
     }
     
-    private suspend fun visualNudgeAndClick(targetDescription: String, maxNudges: Int = 6) {
+    // Returns true if click succeeded, false if target not found / aborted
+    private suspend fun visualNudgeAndClick(targetDescription: String, maxNudges: Int = 6): Boolean {
         // Stuck detection: count consecutive attempts on the same normalized target
         val normalized = normalizeTarget(targetDescription)
         if (normalized == lastClickTargetNormalized) {
@@ -1230,7 +1243,7 @@ class MainActivity : AppCompatActivity() {
                 delay(500)
                 consecutiveClickAttempts = 0
             }
-            return
+            return false // stuck fallback attempted
         }
         
         // Reset cursor to center of screen before targeting
@@ -1250,7 +1263,7 @@ class MainActivity : AppCompatActivity() {
             val bitmap = withContext(Dispatchers.Main) { binding.viewFinder.bitmap }
             if (bitmap == null) {
                 Log.e(TAG, "visualNudgeAndClick: bitmap is NULL")
-                return
+                return false
             }
             
             val outputStream = ByteArrayOutputStream()
@@ -1287,7 +1300,7 @@ class MainActivity : AppCompatActivity() {
                     lastClickTimeMs = System.currentTimeMillis()
                     appendToLog("⏳ Waiting for response...")
                 }
-                return
+                return true
             } else if (upper.startsWith("NUDGE:")) {
                 // Parse relative movement: NUDGE:dx,dy
                 val parts = trimmed.substring(6).split(",")
@@ -1312,7 +1325,7 @@ class MainActivity : AppCompatActivity() {
                 withContext(Dispatchers.Main) {
                     appendToLog("❌ Target not found: $targetDescription")
                 }
-                return
+                return false
             } else {
                 // Fallback: try to extract action from verbose response
                 val nudgeMatch = Regex("NUDGE:\\s*(-?\\d+)\\s*,\\s*(-?\\d+)", RegexOption.IGNORE_CASE).find(upper)
@@ -1323,7 +1336,7 @@ class MainActivity : AppCompatActivity() {
                         lastClickTimeMs = System.currentTimeMillis()
                         appendToLog("⏳ Waiting for response...")
                     }
-                    return
+                    return true
                 } else if (nudgeMatch != null) {
                     val dx = nudgeMatch.groupValues[1].toIntOrNull() ?: 0
                     val dy = nudgeMatch.groupValues[2].toIntOrNull() ?: 0
@@ -1339,7 +1352,7 @@ class MainActivity : AppCompatActivity() {
                     withContext(Dispatchers.Main) {
                         appendToLog("❌ Target not found (extracted): $targetDescription")
                     }
-                    return
+                    return false
                 } else {
                     withContext(Dispatchers.Main) {
                         appendToLog("⚠️ Unexpected: ${trimmed.take(100)}")
@@ -1352,6 +1365,7 @@ class MainActivity : AppCompatActivity() {
         withContext(Dispatchers.Main) {
             appendToLog("⚠️ Max nudge attempts for: $targetDescription")
         }
+        return false
     }
     
     private fun callNudgeAI(base64Image: String, targetDescription: String, attempt: Int): String {
