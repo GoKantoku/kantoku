@@ -541,14 +541,14 @@ class MainActivity : AppCompatActivity() {
                             appendToLog("🎯 Targeting: $description")
                         }
                         val clickSucceeded = visualNudgeAndClick(description)
-                        if (!clickSucceeded) {
+                        if (clickSucceeded) {
+                            actionHistory.add("CLICK_SUCCESS:$description")
+                        } else {
                             // Click failed — clear remaining plan and force re-evaluation
-                            // This prevents the AI from continuing a stale plan
                             pendingActions.clear()
                             withContext(Dispatchers.Main) {
                                 appendToLog("🔄 Click failed, re-planning...")
                             }
-                            // Add failure context to action history so the re-evaluation knows
                             actionHistory.add("CLICK_FAILED:$description")
                         }
                     } else {
@@ -837,14 +837,15 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun planSubtasks(task: String): List<String> {
-        val prompt = """Break this task into 3-5 simple sequential subtasks.
+        val prompt = """Break this task into 2-5 simple sequential subtasks.
             |
             |TASK: $task
             |
             |Rules:
-            |- Each subtask should be a single clear action
-            |- Keep subtasks short and specific
-            |- Include opening apps, navigating, typing, etc. as separate steps
+            |- Each subtask should be a meaningful phase of work, not a single click
+            |- Group related actions into one subtask (e.g. "Click all buttons on the page" not "Click button 1", "Click button 2", etc.)
+            |- Keep the total to 2-5 subtasks maximum
+            |- Include opening apps and navigating as subtasks only if needed
             |
             |Respond with ONLY the subtasks, one per line, numbered:
             |1. First subtask
@@ -925,6 +926,7 @@ class MainActivity : AppCompatActivity() {
             |⚠️ To open apps: USE SPOTLIGHT (KEY:cmd+space, then TYPE:appname, then KEY:enter). Do NOT click dock icons.
             |⚠️ If a popup won't dismiss, IGNORE IT. Use KEY:cmd+l to focus the address bar directly.
             |⚠️ If CLICK_FAILED is in recent actions: the page is STILL OPEN. DO NOT navigate, open Spotlight, or type URLs. Just mark SUBTASK_DONE and move to the next element.
+            |⚠️ If CLICK_SUCCESS:X is in recent actions: X was ALREADY CLICKED. Do NOT click it again. Move to the next element or mark SUBTASK_DONE.
             |
             |Respond with 5-10 commands, one per line:
             |- TYPE:text (type text into focused field)
@@ -961,6 +963,7 @@ class MainActivity : AppCompatActivity() {
             |- POPUPS/DIALOGS (cookie consent, legal terms, sign-in prompts): NEVER use CLICKTARGET on popup buttons — mouse clicks on web dialogs are unreliable. Instead use KEY:tab to focus the button, then KEY:enter to press it. Or KEY:escape to dismiss. If a popup persists after 2 attempts, IGNORE IT and work around it (e.g. KEY:cmd+l to focus address bar directly).
             |- If you see CLICK_FAILED in recent actions: the page is STILL OPEN. DO NOT navigate, DO NOT open Spotlight, DO NOT type URLs. Just mark SUBTASK_DONE and move to the next element.
             |- NEVER use KEY:cmd+tab, KEY:cmd+space, KEY:cmd+l, or TYPE a URL after a click failure. The page hasn't changed.
+            |- If CLICK_SUCCESS:X appears in recent actions, that element WAS ALREADY CLICKED. Do NOT click it again. Move to the NEXT element.
             |
             |Respond with multiple commands, one per line:
             |- TYPE:text (type text into focused field)
