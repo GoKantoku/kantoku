@@ -571,9 +571,23 @@ class MainActivity : AppCompatActivity() {
             
             // Execute up to 3 actions per cycle
             for (action in actions.take(3)) {
-                withContext(Dispatchers.Main) {
-                    appendToLog("→ $action")
-                    executeAction(action)
+                val upper = action.uppercase()
+                if (upper.startsWith("CLICKTARGET:") || (upper.startsWith("CLICK:") && !upper.contains(","))) {
+                    // CLICKTARGET needs visual nudge — handle as suspend
+                    val description = if (upper.startsWith("CLICKTARGET:")) {
+                        action.substring(12)
+                    } else {
+                        action.substring(6)
+                    }
+                    withContext(Dispatchers.Main) {
+                        appendToLog("🎯 Targeting: $description")
+                    }
+                    visualNudgeAndClick(description)
+                } else {
+                    withContext(Dispatchers.Main) {
+                        appendToLog("→ $action")
+                        executeAction(action)
+                    }
                 }
                 delay(1000)
             }
