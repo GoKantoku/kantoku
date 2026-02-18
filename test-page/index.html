@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Kantoku Click Test</title>
+    <style>
+        body {
+            font-family: -apple-system, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            padding: 40px;
+            margin: 0;
+        }
+        h1 { text-align: center; color: #e94560; margin-bottom: 30px; }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-box {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        .test-box h3 { color: #e94560; margin: 0 0 15px 0; font-size: 16px; }
+        .result {
+            margin-top: 10px;
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 14px;
+            min-height: 20px;
+            background: #0f3460;
+        }
+
+        /* Test 1: Standard HTML button */
+        .btn-standard {
+            padding: 12px 30px;
+            font-size: 18px;
+            background: #e94560;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        /* Test 2: Small button */
+        .btn-small {
+            padding: 6px 14px;
+            font-size: 12px;
+            background: #0f3460;
+            color: white;
+            border: 2px solid #e94560;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        /* Test 3: Large button */
+        .btn-large {
+            padding: 20px 60px;
+            font-size: 24px;
+            background: #533483;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+
+        /* Test 4: Link styled as button */
+        .btn-link {
+            display: inline-block;
+            padding: 12px 30px;
+            font-size: 18px;
+            background: #e94560;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        /* Test 5: Div with onclick */
+        .btn-div {
+            display: inline-block;
+            padding: 12px 30px;
+            font-size: 18px;
+            background: #2d6a4f;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        /* Test 6: Popup dialog (like CNN consent) */
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .overlay.active { display: flex; }
+        .dialog {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            max-width: 400px;
+            border: 2px solid #e94560;
+        }
+        .dialog h2 { color: #e94560; margin: 0 0 15px 0; }
+        .dialog p { color: #aaa; margin: 0 0 20px 0; }
+        .btn-agree {
+            padding: 12px 40px;
+            font-size: 18px;
+            background: #e94560;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        /* Test 7: CSS-only button (no JS handler on the element itself) */
+        .btn-css {
+            padding: 12px 30px;
+            font-size: 18px;
+            background: #d4a373;
+            color: #1a1a2e;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        /* Test 8: Iframe button */
+        .iframe-container { border-radius: 8px; overflow: hidden; }
+
+        /* Test 9: Checkbox */
+        .checkbox-label {
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .checkbox-label input { width: 20px; height: 20px; }
+
+        /* Score */
+        #score {
+            text-align: center;
+            font-size: 28px;
+            color: #e94560;
+            margin-top: 30px;
+            padding: 20px;
+            background: #16213e;
+            border-radius: 12px;
+            max-width: 1200px;
+            margin: 30px auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎯 Kantoku Click Test</h1>
+    <p style="text-align:center;color:#aaa;margin-bottom:30px;">Each button records when clicked. Task: "Click every button on this test page."</p>
+
+    <div class="grid">
+        <!-- Test 1: Standard button -->
+        <div class="test-box">
+            <h3>1. Standard Button</h3>
+            <button class="btn-standard" onclick="clicked(1)">Click Me</button>
+            <div class="result" id="r1">Waiting...</div>
+        </div>
+
+        <!-- Test 2: Small button -->
+        <div class="test-box">
+            <h3>2. Small Button</h3>
+            <button class="btn-small" onclick="clicked(2)">Tiny Target</button>
+            <div class="result" id="r2">Waiting...</div>
+        </div>
+
+        <!-- Test 3: Large button -->
+        <div class="test-box">
+            <h3>3. Large Button</h3>
+            <button class="btn-large" onclick="clicked(3)">BIG</button>
+            <div class="result" id="r3">Waiting...</div>
+        </div>
+
+        <!-- Test 4: Link styled as button -->
+        <div class="test-box">
+            <h3>4. Link as Button</h3>
+            <a href="#" class="btn-link" onclick="clicked(4); return false;">Link Button</a>
+            <div class="result" id="r4">Waiting...</div>
+        </div>
+
+        <!-- Test 5: Div with onclick -->
+        <div class="test-box">
+            <h3>5. Div with onclick</h3>
+            <div class="btn-div" onclick="clicked(5)">Div Button</div>
+            <div class="result" id="r5">Waiting...</div>
+        </div>
+
+        <!-- Test 6: Show popup then click Agree -->
+        <div class="test-box">
+            <h3>6. Popup Dialog</h3>
+            <button class="btn-standard" onclick="showPopup()">Show Popup</button>
+            <div class="result" id="r6">Waiting...</div>
+        </div>
+
+        <!-- Test 7: CSS hover button -->
+        <div class="test-box">
+            <h3>7. CSS Button</h3>
+            <button class="btn-css" onclick="clicked(7)">Styled Button</button>
+            <div class="result" id="r7">Waiting...</div>
+        </div>
+
+        <!-- Test 8: Input submit -->
+        <div class="test-box">
+            <h3>8. Input Submit</h3>
+            <input type="button" value="Submit Input" class="btn-standard" onclick="clicked(8)">
+            <div class="result" id="r8">Waiting...</div>
+        </div>
+
+        <!-- Test 9: Checkbox -->
+        <div class="test-box">
+            <h3>9. Checkbox</h3>
+            <label class="checkbox-label">
+                <input type="checkbox" onchange="clicked(9)"> Check this box
+            </label>
+            <div class="result" id="r9">Waiting...</div>
+        </div>
+    </div>
+
+    <!-- Popup overlay (Test 6) -->
+    <div class="overlay" id="popup">
+        <div class="dialog">
+            <h2>Legal Terms & Privacy</h2>
+            <p>By continuing, you agree to our terms of service and privacy policy.</p>
+            <button class="btn-agree" onclick="agreeClicked()">Agree</button>
+        </div>
+    </div>
+
+    <div id="score">Score: 0 / 9</div>
+
+    <script>
+        let results = {};
+        let total = 0;
+
+        function clicked(n) {
+            if (!results[n]) {
+                results[n] = true;
+                total++;
+                document.getElementById('r' + n).textContent = '✅ Clicked!';
+                document.getElementById('r' + n).style.background = '#2d6a4f';
+                document.getElementById('score').textContent = 'Score: ' + total + ' / 9';
+            }
+        }
+
+        function showPopup() {
+            document.getElementById('popup').classList.add('active');
+        }
+
+        function agreeClicked() {
+            document.getElementById('popup').classList.remove('active');
+            clicked(6);
+        }
+    </script>
+</body>
+</html>

@@ -1075,6 +1075,7 @@ class MainActivity : AppCompatActivity() {
         } else if (action.uppercase() == "SUBTASK_DONE") {
             Log.d(TAG, "Subtask marked as DONE")
             pendingActions.clear() // Clear any remaining queued actions
+            resetClickStuckCounter()
             
             // Save completed subtask name, will summarize async
             val completedName = getCurrentSubtask()
@@ -1182,22 +1183,34 @@ class MainActivity : AppCompatActivity() {
         }
     }
     
-    // Track consecutive click attempts for stuck detection
+    // Track consecutive click attempts on SAME target for stuck detection
     private var consecutiveClickAttempts = 0
-    private var lastClickSuccessTimeMs = 0L
+    private var lastClickTargetNormalized = ""
+    
+    private fun normalizeTarget(desc: String): String {
+        // Extract key words, ignoring modifiers like "in the popup dialog"
+        return desc.lowercase()
+            .replace(Regex("\\b(button|the|in|on|a|an|of|for|dialog|popup|section|area|corner|top|bottom|left|right|pink|red|blue|green|white|black)\\b"), "")
+            .replace(Regex("[^a-z0-9]"), "")
+            .trim()
+    }
+    
+    fun resetClickStuckCounter() {
+        consecutiveClickAttempts = 0
+        lastClickTargetNormalized = ""
+    }
     
     private suspend fun visualNudgeAndClick(targetDescription: String, maxNudges: Int = 6) {
-        // Stuck detection: if we've done many click attempts without the screen changing,
-        // try keyboard fallback. Resets when we go 30+ seconds without a click attempt.
-        val now = System.currentTimeMillis()
-        if (now - lastClickSuccessTimeMs < 30_000) {
+        // Stuck detection: count consecutive attempts on the same normalized target
+        val normalized = normalizeTarget(targetDescription)
+        if (normalized == lastClickTargetNormalized) {
             consecutiveClickAttempts++
         } else {
+            lastClickTargetNormalized = normalized
             consecutiveClickAttempts = 1
         }
-        lastClickSuccessTimeMs = now
         
-        if (consecutiveClickAttempts >= 3) {
+        if (consecutiveClickAttempts >= 4) {
             withContext(Dispatchers.Main) {
                 appendToLog("🔄 Stuck clicking — trying keyboard fallback (Tab+Enter)")
                 sendKey("tab")
