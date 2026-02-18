@@ -242,10 +242,20 @@ class MainActivity : AppCompatActivity() {
         appendToLog("Waiting for connection...")
     }
     
+    private val maxLogLines = 200
+    
     private fun appendToLog(message: String) {
         val timestamp = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US)
             .format(java.util.Date())
         actionLog.append("[$timestamp] $message\n")
+        
+        // Trim log to prevent OOM — keep last maxLogLines lines
+        val lines = actionLog.lines()
+        if (lines.size > maxLogLines) {
+            actionLog.clear()
+            actionLog.append(lines.takeLast(maxLogLines).joinToString("\n"))
+            actionLog.append("\n")
+        }
         
         runOnUiThread {
             binding.tvActionLog.text = actionLog.toString()
