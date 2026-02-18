@@ -1078,7 +1078,13 @@ class MainActivity : AppCompatActivity() {
             
             // Launch summary coroutine
             scope.launch {
-                val summary = summarizeSubtaskCompletion(completedName)
+                val summary = try {
+                    summarizeSubtaskCompletion(completedName)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Summary failed: ${e.message}")
+                    if (checkForCreditError(e.message ?: "")) return@launch
+                    "Completed (summary unavailable)"
+                }
                 completedSubtasks.add(Pair(completedName, summary))
                 actionHistory.clear()
                 
@@ -1238,8 +1244,18 @@ class MainActivity : AppCompatActivity() {
                 appendToLog("👁️ Looking for target (attempt $attempt/$maxNudges)...")
             }
             
-            val response = withContext(Dispatchers.IO) {
-                callNudgeAI(base64Image, targetDescription, attempt)
+            val response = try {
+                withContext(Dispatchers.IO) {
+                    callNudgeAI(base64Image, targetDescription, attempt)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Nudge API failed: ${e.message}")
+                if (checkForCreditError(e.message ?: "")) return
+                withContext(Dispatchers.Main) {
+                    appendToLog("⚠️ Nudge error: ${e.message?.take(80)}")
+                }
+                delay(5000) // Back off on error
+                continue
             }
             
             val trimmed = response.trim()
