@@ -1280,7 +1280,7 @@ class MainActivity : AppCompatActivity() {
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Nudge API failed: ${e.message}")
-                if (checkForCreditError(e.message ?: "")) return
+                if (checkForCreditError(e.message ?: "")) return false
                 withContext(Dispatchers.Main) {
                     appendToLog("⚠️ Nudge error: ${e.message?.take(80)}")
                 }
