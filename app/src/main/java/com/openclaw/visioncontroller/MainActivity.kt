@@ -569,8 +569,8 @@ class MainActivity : AppCompatActivity() {
             
             val actions = parseAllActions(response)
             
-            // Execute 1-2 actions max per cycle
-            for (action in actions.take(2)) {
+            // Execute up to 3 actions per cycle
+            for (action in actions.take(3)) {
                 withContext(Dispatchers.Main) {
                     appendToLog("→ $action")
                     executeAction(action)
@@ -598,34 +598,39 @@ class MainActivity : AppCompatActivity() {
     private fun callIdleVisionAI(base64Image: String): String {
         val recentIdleActions = actionHistory.takeLast(10).joinToString("\n")
         
-        val prompt = """You are monitoring a computer screen during idle time. Look at the screen and decide what to do.
+        val prompt = """You are a human sitting at a computer during idle time. Act naturally — like a real person who just finished a task and is now casually using the computer.
             |
             |PRIORITIES (in order):
-            |1. NOTIFICATIONS: Look for any notification banners, badges, or alerts (new emails, messages, calendar reminders, system alerts). If you see any, report what you see and interact with them.
-            |2. POPUPS/DIALOGS: Dismiss any popups, cookie banners, or dialogs that appeared.
-            |3. KEEP ALIVE: If nothing notable, do a small mouse movement to prevent the screen from sleeping.
+            |1. NOTIFICATIONS: Look for any notification banners, badges, or alerts (new emails, messages, calendar reminders, system alerts). If you see any, use NOTIFY: to report them and interact with them.
+            |2. POPUPS/DIALOGS: Dismiss any popups, cookie banners, or dialogs.
+            |3. ACT HUMAN: Do something a person would naturally do — scroll the page, click an interesting link, read content, check something. Vary your actions. Don't repeat the same thing.
             |
             |RECENT ACTIONS:
             |${if (recentIdleActions.isEmpty()) "None yet" else recentIdleActions}
             |
-            |Respond with 1-2 commands max:
-            |- MOVE:dx,dy (small mouse movement to keep alive, e.g. MOVE:5,0)
-            |- KEY:keyname (press a key, e.g. KEY:escape to dismiss a dialog)
-            |- CLICKTARGET:description (click something specific, e.g. a notification)
-            |- CLICK:x,y (click at coordinates)
-            |- TYPE:text (only if a text field is focused)
-            |- WAIT (do nothing this cycle)
-            |- NOTIFY:message (report something notable you see — a notification, alert, or status change)
+            |Respond with 1-3 commands:
+            |- KEY:keyname (scroll with pagedown/pageup, press escape, cmd+tab to switch apps, etc.)
+            |- CLICKTARGET:description (click something visible — a link, button, tab, menu item)
+            |- CLICK:x,y (click at specific coordinates)
+            |- MOVE:dx,dy (move the mouse naturally)
+            |- TYPE:text (only if a text field is clearly focused)
+            |- NOTIFY:message (report something notable — a notification, new email badge, alert)
+            |- WAIT (pause, like reading something)
             |
-            |⚠️ DO NOT open apps, browse websites, or type unless responding to something on screen.
-            |⚠️ DO NOT use keyboard shortcuts like cmd+space, cmd+t, etc.
-            |⚠️ Keep actions minimal. You will be called again in 60 seconds.
+            |BEHAVE LIKE A REAL PERSON:
+            |- Scroll through pages to read them
+            |- Click interesting links or articles
+            |- Switch between open tabs or apps occasionally
+            |- Move the mouse to different areas naturally
+            |- Don't just do MOVE:5,0 every time — that looks robotic
+            |- Mix up your actions: scroll, click, read, explore
             |
-            |If you see a notification or alert, use NOTIFY: to report it, then interact with it if appropriate.""".trimMargin()
+            |⚠️ Don't do anything destructive (delete files, close important windows, change settings).
+            |⚠️ You'll be called again in 60 seconds, so keep actions small.""".trimMargin()
         
         val json = JSONObject().apply {
             put("model", "claude-sonnet-4-20250514")
-            put("max_tokens", 150)
+            put("max_tokens", 200)
             put("messages", JSONArray().apply {
                 put(JSONObject().apply {
                     put("role", "user")
