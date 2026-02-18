@@ -1172,32 +1172,42 @@ class MainActivity : AppCompatActivity() {
         }
     }
     
-    // Track repeated failed click targets for stuck detection
-    private var lastClickTarget = ""
-    private var clickTargetAttempts = 0
+    // Track consecutive click attempts for stuck detection
+    private var consecutiveClickAttempts = 0
+    private var lastClickSuccessTimeMs = 0L
     
     private suspend fun visualNudgeAndClick(targetDescription: String, maxNudges: Int = 6) {
-        // Stuck detection: if we've tried the same target 3+ times, try keyboard fallback
-        if (targetDescription.equals(lastClickTarget, ignoreCase = true)) {
-            clickTargetAttempts++
-            if (clickTargetAttempts >= 3) {
+        // Stuck detection: if we've done many click attempts without the screen changing,
+        // try keyboard fallback. Resets when we go 30+ seconds without a click attempt.
+        val now = System.currentTimeMillis()
+        if (now - lastClickSuccessTimeMs < 30_000) {
+            consecutiveClickAttempts++
+        } else {
+            consecutiveClickAttempts = 1
+        }
+        lastClickSuccessTimeMs = now
+        
+        if (consecutiveClickAttempts >= 3) {
+            withContext(Dispatchers.Main) {
+                appendToLog("🔄 Stuck clicking — trying keyboard fallback (Tab+Enter)")
+                sendKey("tab")
+            }
+            delay(300)
+            withContext(Dispatchers.Main) {
+                sendKey("enter")
+            }
+            delay(500)
+            
+            // If still stuck after 6 attempts, try Escape to dismiss instead
+            if (consecutiveClickAttempts >= 6) {
                 withContext(Dispatchers.Main) {
-                    appendToLog("🔄 Stuck on '$targetDescription' — trying keyboard fallback")
-                    // Try Tab to focus the button, then Enter to click it
-                    sendKey("tab")
-                }
-                delay(200)
-                withContext(Dispatchers.Main) {
-                    sendKey("enter")
+                    appendToLog("🔄 Still stuck — trying Escape")
+                    sendKey("escape")
                 }
                 delay(500)
-                clickTargetAttempts = 0
-                lastClickTarget = ""
-                return
+                consecutiveClickAttempts = 0
             }
-        } else {
-            lastClickTarget = targetDescription
-            clickTargetAttempts = 1
+            return
         }
         
         // Reset cursor to center of screen before targeting
