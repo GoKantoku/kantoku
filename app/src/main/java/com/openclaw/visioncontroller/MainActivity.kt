@@ -244,6 +244,45 @@ class MainActivity : AppCompatActivity() {
     
     private val maxLogLines = 200
     
+    private fun checkForCreditError(errorMessage: String): Boolean {
+        if (errorMessage.contains("credit balance is too low", ignoreCase = true) ||
+            errorMessage.contains("insufficient_quota", ignoreCase = true) ||
+            errorMessage.contains("rate_limit", ignoreCase = true)) {
+            
+            val isCredit = errorMessage.contains("credit", ignoreCase = true)
+            val title = if (isCredit) "Out of API Credits" else "API Rate Limited"
+            val message = if (isCredit) {
+                "Your Anthropic API credit balance is too low. Please add credits at console.anthropic.com to continue."
+            } else {
+                "API rate limit reached. The app will pause and retry shortly."
+            }
+            
+            runOnUiThread {
+                updateStatus("⚠️ $title")
+                appendToLog("🚨 $title")
+                
+                if (isCredit) {
+                    // Stop the loop — no point retrying with no credits
+                    isRunning = false
+                    isIdleMode = false
+                    binding.btnStart.text = "Begin"
+                }
+                
+                try {
+                    android.app.AlertDialog.Builder(this)
+                        .setTitle(title)
+                        .setMessage(message)
+                        .setPositiveButton("OK", null)
+                        .show()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Could not show alert dialog: ${e.message}")
+                }
+            }
+            return true
+        }
+        return false
+    }
+    
     private fun appendToLog(message: String) {
         val timestamp = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US)
             .format(java.util.Date())
@@ -456,6 +495,7 @@ class MainActivity : AppCompatActivity() {
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Subtask planning failed: ${e.message}")
+                if (checkForCreditError(e.message ?: "")) return@launch
                 appendToLog("⚠️ Planning failed, proceeding with main task")
                 subtasks.add(currentTask)  // Fall back to original task
             }
@@ -607,6 +647,7 @@ class MainActivity : AppCompatActivity() {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Idle vision failed: ${e.message}")
+            if (checkForCreditError(e.message ?: "")) return
             appendToLog("⚠️ Idle error: ${e.message}")
             // Fallback: small mouse wiggle to prevent sleep
             withContext(Dispatchers.Main) {
@@ -759,6 +800,7 @@ class MainActivity : AppCompatActivity() {
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Vision analysis failed: ${e.message}", e)
+                if (checkForCreditError(e.message ?: "")) return@withContext
                 withContext(Dispatchers.Main) {
                     updateStatus("Error: ${e.message}")
                     appendToLog("⚠️ Error: ${e.message}")
