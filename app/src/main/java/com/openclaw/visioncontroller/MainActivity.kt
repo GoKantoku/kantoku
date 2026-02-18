@@ -691,7 +691,8 @@ class MainActivity : AppCompatActivity() {
             |- Mix up your actions: scroll, click, read, explore
             |
             |⚠️ Don't do anything destructive (delete files, close important windows, change settings).
-            |⚠️ You'll be called again in 60 seconds, so keep actions small.""".trimMargin()
+            |⚠️ You'll be called again in 60 seconds, so keep actions small.
+            |⚠️ POPUPS/DIALOGS: Never use CLICKTARGET on popup buttons (cookie consent, legal terms, sign-in). Use KEY:tab then KEY:enter, or KEY:escape. If a popup persists, ignore it and move on.""".trimMargin()
         
         val json = JSONObject().apply {
             put("model", "claude-sonnet-4-20250514")
@@ -908,9 +909,11 @@ class MainActivity : AppCompatActivity() {
             |⚠️ FIRST: Close anything blocking:
             |- KEY:escape (close dialogs, popups, menus)
             |- KEY:cmd+w (close unrelated windows)
+            |- For web popups (cookie consent, legal terms): use KEY:tab then KEY:enter — NEVER CLICKTARGET on popup buttons
             |
             |Try a DIFFERENT approach than what you already tried.
             |⚠️ To open apps: USE SPOTLIGHT (KEY:cmd+space, then TYPE:appname, then KEY:enter). Do NOT click dock icons.
+            |⚠️ If a popup won't dismiss, IGNORE IT. Use KEY:cmd+l to focus the address bar directly.
             |
             |Respond with 5-10 commands, one per line:
             |- TYPE:text (type text into focused field)
@@ -944,6 +947,7 @@ class MainActivity : AppCompatActivity() {
             |- To open apps: USE SPOTLIGHT (KEY:cmd+space, then TYPE:appname, then KEY:enter). This is MORE RELIABLE than clicking dock icons.
             |- NEVER type unless you can SEE the focused input field
             |- Clicking dock icons is unreliable — prefer keyboard shortcuts
+            |- POPUPS/DIALOGS (cookie consent, legal terms, sign-in prompts): NEVER use CLICKTARGET on popup buttons — mouse clicks on web dialogs are unreliable. Instead use KEY:tab to focus the button, then KEY:enter to press it. Or KEY:escape to dismiss. If a popup persists after 2 attempts, IGNORE IT and work around it (e.g. KEY:cmd+l to focus address bar directly).
             |
             |Respond with multiple commands, one per line:
             |- TYPE:text (type text into focused field)
